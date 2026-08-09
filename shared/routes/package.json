@@ -1,0 +1,26 @@
+{
+	"name": "@shared/routes",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "Shared route path constants and helpers for frontend and backend",
+	"main": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./constants": "./src/constants/index.ts",
+		"./paths": "./src/config/paths.ts",
+		"./meta": "./src/config/meta.ts",
+		"./route-head": "./src/config/route-head.ts",
+		"./types": "./src/types/index.ts",
+		"./utils": "./src/utils/index.ts"
+	},
+	"scripts": {
+		"build": "tsc",
+		"lint": "tsc --noEmit",
+		"lint:fix": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"typescript": "^5.8.3",
+		"vitest": "^3.2.4"
+	}
+}

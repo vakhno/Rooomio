@@ -1,0 +1,70 @@
+{
+	"name": "@shared/design-system",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "Shared shadcn/Radix UI primitives",
+	"exports": {
+		"./cn": "./src/lib/cn.ts",
+		"./alert-dialog": "./src/components/ui/alert-dialog.tsx",
+		"./badge": "./src/components/ui/badge.tsx",
+		"./button": "./src/components/ui/button.tsx",
+		"./card": "./src/components/ui/card.tsx",
+		"./combobox": "./src/components/ui/combobox.tsx",
+		"./command": "./src/components/ui/command.tsx",
+		"./dialog": "./src/components/ui/dialog.tsx",
+		"./empty": "./src/components/ui/empty.tsx",
+		"./form": "./src/components/ui/form.tsx",
+		"./input": "./src/components/ui/input.tsx",
+		"./item": "./src/components/ui/item.tsx",
+		"./label": "./src/components/ui/label.tsx",
+		"./popover": "./src/components/ui/popover.tsx",
+		"./resizable": "./src/components/ui/resizable.tsx",
+		"./scroll-area": "./src/components/ui/scroll-area.tsx",
+		"./select": "./src/components/ui/select.tsx",
+		"./separator": "./src/components/ui/separator.tsx",
+		"./skeleton": "./src/components/ui/skeleton.tsx",
+		"./slider": "./src/components/ui/slider.tsx",
+		"./styles.css": "./src/styles/global.css",
+		"./switch": "./src/components/ui/switch.tsx",
+		"./table": "./src/components/ui/table.tsx",
+		"./tabs": "./src/components/ui/tabs.tsx",
+		"./toggle": "./src/components/ui/toggle.tsx"
+	},
+	"scripts": {
+		"build": "tsc",
+		"lint": "tsc --noEmit",
+		"lint:fix": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@radix-ui/react-alert-dialog": "^1.1.15",
+		"@radix-ui/react-dialog": "^1.1.15",
+		"@radix-ui/react-label": "^2.1.7",
+		"@radix-ui/react-popover": "^1.1.15",
+		"@radix-ui/react-scroll-area": "^1.2.10",
+		"@radix-ui/react-select": "^2.2.6",
+		"@radix-ui/react-separator": "^1.1.8",
+		"@radix-ui/react-slider": "^1.3.6",
+		"@radix-ui/react-slot": "^1.2.3",
+		"@radix-ui/react-switch": "^1.2.6",
+		"@radix-ui/react-tabs": "^1.1.13",
+		"@radix-ui/react-toggle": "^1.1.10",
+		"class-variance-authority": "^0.7.1",
+		"clsx": "^2.1.1",
+		"cmdk": "^1.1.1",
+		"lucide-react": "^0.511.0",
+		"react-resizable-panels": "^3.0.6",
+		"tailwind-merge": "^3.3.0",
+		"tailwindcss": "^4.1.7",
+		"tw-animate-css": "^1.3.0"
+	},
+	"peerDependencies": {
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"react-hook-form": "^7.0.0"
+	},
+	"devDependencies": {
+		"@types/react": "^19.1.2",
+		"@types/react-dom": "^19.1.2",
+		"typescript": "~5.8.3"
+	}
+}

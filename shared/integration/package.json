@@ -1,0 +1,13 @@
+{
+	"name": "@shared/integration",
+	"private": true,
+	"type": "module",
+	"version": "1.0.0",
+	"description": "Shared integration test suites for the monorepo",
+	"scripts": {
+		"test": "vitest run --config vitest.config.ts"
+	},
+	"devDependencies": {
+		"vitest": "^3.2.4"
+	}
+}

@@ -1,0 +1,37 @@
+{
+	"name": "app-template",
+	"version": "1.0.0",
+	"private": true,
+	"packageManager": "npm@11.8.0",
+	"description": "",
+	"workspaces": ["apps/*", "shared/*"],
+	"scripts": {
+		"build": "turbo run build",
+		"dev": "turbo run dev",
+		"lint": "turbo run lint",
+		"lint:fix": "turbo run lint:fix",
+		"lint:frontend": "turbo run lint --filter=frontend",
+		"lint:backend": "turbo run lint --filter=backend",
+		"test:unit": "npm run test --workspace=@shared/unit",
+		"test:integration": "npm run test --workspace=@shared/integration",
+		"test:e2e": "npm run test --workspace=@shared/e2e",
+		"test": "npm run test:unit && npm run test:integration && npm run test:e2e",
+		"prepare": "husky"
+	},
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"husky": "^9.1.7",
+		"lint-staged": "^16.0.0",
+		"turbo": "^2.3.0"
+	},
+	"overrides": {
+		"zod": "^4.4.3",
+		"@tanstack/router-plugin": {
+			"zod": "^3.24.2"
+		},
+		"@tanstack/router-generator": {
+			"zod": "^3.24.2"
+		}
+	}
+}

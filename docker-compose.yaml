@@ -1,0 +1,119 @@
+# Dev (default): docker compose down && docker compose up --build
+# Prod (VPS): docker compose --profile prod up -d --build
+# For prod, set VITE_APP_URL and VITE_API_URL in a root .env (see .env.example).
+
+services:
+  # --- Dev (default, no profile) ---
+  backend-dev:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: dev
+    container_name: backend-dev
+    develop:
+      watch:
+        - action: rebuild
+          path: ./apps/backend/package.json
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/backend:/app/apps/backend
+      - ./shared:/app/shared
+      - /app/node_modules
+    env_file:
+      - path: ./.env
+        required: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  frontend-dev:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: dev
+    container_name: frontend-dev
+    develop:
+      watch:
+        - action: rebuild
+          path: ./apps/frontend/package.json
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/frontend:/app/apps/frontend
+      - ./shared:/app/shared
+      - /app/node_modules
+    env_file:
+      - path: ./.env
+        required: true
+    depends_on:
+      - backend-dev
+    networks:
+      - app-network
+
+  # --- Prod (profile: prod) ---
+  backend:
+    profiles: [prod]
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: prod
+    container_name: backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: ./.env
+        required: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+  frontend:
+    profiles: [prod]
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: prod
+      args:
+        VITE_APP_URL: ${VITE_APP_URL}
+        VITE_API_URL: ${VITE_API_URL}
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "80:3000"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

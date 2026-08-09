@@ -1,0 +1,19 @@
+{
+	"name": "@shared/locales",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "Shared locales",
+	"main": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./constants": "./src/constants/index.ts"
+	},
+	"scripts": {
+		"build": "tsc",
+		"lint": "tsc --noEmit",
+		"lint:fix": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"typescript": "^5.8.3"
+	}
+}

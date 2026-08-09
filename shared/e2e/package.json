@@ -1,0 +1,40 @@
+{
+	"name": "@shared/e2e",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "Shared Playwright e2e utilities and test suites for monorepo apps",
+	"main": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./fixtures": "./src/fixtures/index.ts",
+		"./helpers": "./src/helpers/index.ts",
+		"./base-config": "./src/config/base-config.ts"
+	},
+	"scripts": {
+		"lint": "tsc --noEmit",
+		"lint:fix": "tsc --noEmit",
+		"test": "playwright test",
+		"test-server": "tsx src/server/test-server.ts",
+		"playwright:install": "playwright install chromium --with-deps"
+	},
+	"dependencies": {
+		"@shared/routes": "file:../routes",
+		"@shared/zod-schemas": "file:../zod-schemas",
+		"cors": "^2.8.5",
+		"drizzle-orm": "^0.45.2",
+		"express": "^5.1.0",
+		"msw": "^2.0.0",
+		"pg": "^8.16.3"
+	},
+	"peerDependencies": {
+		"@playwright/test": ">=1.40.0"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.56.1",
+		"@types/cors": "^2.8.18",
+		"@types/express": "^5.0.2",
+		"@types/pg": "^8.15.6",
+		"tsx": "^4.20.3",
+		"typescript": "^5.8.3"
+	}
+}

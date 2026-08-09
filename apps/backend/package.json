@@ -1,0 +1,49 @@
+{
+	"name": "backend",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "",
+	"author": "",
+	"license": "ISC",
+	"keywords": [],
+	"main": "index.js",
+	"scripts": {
+		"lint": "eslint . && tsc --noEmit --project tsconfig.json",
+		"lint:fix": "eslint . --fix",
+		"lint:types": "tsc --noEmit --project tsconfig.json",
+		"lint:eslint": "eslint .",
+		"build": "tsc --build",
+		"start": "node ./dist/index.js",
+		"dev": "nodemon",
+		"dev:tsx": "tsx watch ./src/index.ts"
+	},
+	"dependencies": {
+		"@shared/pg": "file:../../shared/pg",
+		"@shared/routes": "file:../../shared/routes",
+		"@shared/sockets": "file:../../shared/sockets",
+		"@shared/zod-schemas": "file:../../shared/zod-schemas",
+		"bcryptjs": "^3.0.3",
+		"cookie-parser": "^1.4.7",
+		"cors": "^2.8.5",
+		"drizzle-orm": "^0.45.2",
+		"express": "^5.1.0",
+		"helmet": "^8.1.0",
+		"jsonwebtoken": "^9.0.3",
+		"pg": "^8.16.3"
+	},
+	"devDependencies": {
+		"@antfu/eslint-config": "^4.13.2",
+		"@types/cookie-parser": "^1.4.9",
+		"@types/cors": "^2.8.18",
+		"@types/express": "^5.0.2",
+		"@types/jsonwebtoken": "^9.0.10",
+		"@types/node": "^22.15.21",
+		"@types/pg": "^8.15.6",
+		"eslint": "^9.27.0",
+		"eslint-plugin-format": "^1.0.1",
+		"nodemon": "^3.1.10",
+		"ts-node": "^10.9.2",
+		"tsx": "^4.20.3",
+		"typescript": "^5.8.3"
+	}
+}

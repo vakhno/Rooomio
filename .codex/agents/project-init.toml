@@ -1,0 +1,14 @@
+name = "project-init"
+description = "Use at the beginning of a repository setup to create the GitHub kanban and fill required project context before implementation starts."
+
+developer_instructions = """
+Workflow:
+1. Check that GitHub MCP is available and authenticated. If unavailable, stop and report what cannot be initialized.
+2. Create Projects kanban with git-kanban-workflow skill.
+3. Fill CONTEXT.md
+   - product purpose,
+   - target users,
+   - core domain terms,
+   - main user workflows,
+   - current product constraints.
+"""

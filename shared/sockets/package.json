@@ -1,0 +1,24 @@
+{
+	"name": "@shared/sockets",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "Shared Socket.IO server setup",
+	"main": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./server": "./src/server/index.ts"
+	},
+	"scripts": {
+		"build": "tsc",
+		"lint": "tsc --noEmit",
+		"lint:fix": "tsc --noEmit"
+	},
+	"dependencies": {
+		"express": "^5.1.0",
+		"socket.io": "^4.8.1"
+	},
+	"devDependencies": {
+		"@types/express": "^5.0.2",
+		"typescript": "^5.8.3"
+	}
+}
