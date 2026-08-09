@@ -45,7 +45,7 @@ export default function SignInForm() {
 					name="email"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Email</FormLabel>
+							<FormLabel>Account email</FormLabel>
 							<FormControl>
 								<Input type="email" autoComplete="email" {...field} />
 							</FormControl>
@@ -66,9 +66,13 @@ export default function SignInForm() {
 						</FormItem>
 					)}
 				/>
-				{error && <p className="text-sm text-destructive">{error}</p>}
+				{error && (
+					<p className="rounded-[2px] border-2 border-destructive bg-shade-0 px-3 py-2 text-sm font-extrabold text-destructive">
+						{error}
+					</p>
+				)}
 				<Button type="submit" className="w-full" disabled={signInMutation.isPending}>
-					{signInMutation.isPending ? "Please wait" : "Sign In"}
+					{signInMutation.isPending ? "Signing in..." : "Enter coworking"}
 				</Button>
 			</form>
 		</Form>

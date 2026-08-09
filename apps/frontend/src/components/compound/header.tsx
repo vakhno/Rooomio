@@ -10,7 +10,7 @@ import { Separator } from "@shared/design-system/separator";
 import { Skeleton } from "@shared/design-system/skeleton";
 import { useGetSession, useLogout } from "@shared/queries";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Menu, Moon, Sun, User } from "lucide-react";
+import { ArrowUpRight, CalendarDays, LogOut, Menu, Moon, Sun, User } from "lucide-react";
 import { useState } from "react";
 
 import { useTheme } from "@/hooks/use-theme";
@@ -51,22 +51,30 @@ const Header = ({ className = "" }: HeaderProps) => {
 	const userEmail = user?.email || "";
 
 	return (
-		<header className={cn("border border-t-0 container mx-auto bg-card sticky top-0 z-40 h-[var(--header-height)] mb-[var(--header-margin-bottom)] rounded-bl-xl rounded-br-xl px-6 flex items-center justify-between", className)}>
+		<header className={cn("container sticky top-3 z-40 mx-auto mb-[var(--header-margin-bottom)] mt-3 flex min-h-[var(--header-height)] flex-wrap items-center justify-between gap-3 rounded-[3px] border-2 border-border bg-card px-4 py-3 [box-shadow:4px_4px_0_var(--border)] sm:px-6", className)}>
 			<Link
 				to="/"
-				className="flex items-center gap-1"
+				className="flex min-w-0 items-center gap-3"
 			>
-				<span className="font-semibold text-xl">
-					App
+				<span className="grid size-10 shrink-0 place-items-center rounded-[2px] border-2 border-border bg-primary text-primary-foreground [box-shadow:2px_2px_0_var(--border)]">
+					<CalendarDays className="size-5" />
+				</span>
+				<span className="min-w-0">
+					<span className="block truncate text-xl font-extrabold leading-none text-foreground">
+						Roomioo
+					</span>
+					<span className="block truncate text-xs font-extrabold text-muted-foreground">
+						Coworking
+					</span>
 				</span>
 			</Link>
 			<div className="flex items-center gap-2">
-				<Button onClick={handleToggleTheme} variant="ghost" size="icon">
+				<Button onClick={handleToggleTheme} variant="ghost" size="icon" aria-label="Toggle theme">
 					{theme === "dark" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
 				</Button>
 				{isLoading
 					? (
-							<Skeleton className="h-10 w-10 rounded-full" />
+							<Skeleton className="h-11 w-11 rounded-[2px]" />
 						)
 					: user
 						? (
@@ -74,7 +82,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 									<Button
 										variant="ghost"
 										size="icon-lg"
-										className="relative rounded-full overflow-hidden border-2 border-primary/20 hover:border-primary/40 transition-colors p-0"
+										className="relative overflow-hidden rounded-[2px] p-0"
 										aria-label="User menu"
 										onClick={() => setIsProfileDialogOpen(true)}
 									>
@@ -87,7 +95,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 													/>
 												)
 											: (
-													<div className="h-full w-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm">
+													<div className="flex h-full w-full items-center justify-center bg-selected text-sm font-extrabold text-foreground">
 														{getInitials(userName)}
 													</div>
 												)}
@@ -96,44 +104,55 @@ const Header = ({ className = "" }: HeaderProps) => {
 										<DialogContent className="sm:max-w-md">
 											<DialogHeader>
 												<DialogTitle>Profile</DialogTitle>
+												<DialogDescription>
+													Account and coworking booking controls.
+												</DialogDescription>
 											</DialogHeader>
-											<div className="space-y-4">
-												<div className="flex flex-col items-center gap-1">
-													{avatarUrl
-														? (
-																<img
-																	src={avatarUrl}
-																	alt={userName}
-																	className="h-16 w-16 rounded-full object-cover"
-																/>
-															)
-														: (
-																<div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-lg">
-																	{getInitials(userName)}
-																</div>
-															)}
-													<div className="flex flex-col items-center gap-1">
-														<p className="font-medium text-base truncate">{userName}</p>
+											<div className="space-y-5">
+												<div className="flex items-center gap-4 rounded-[3px] border-2 border-border bg-shade-1 p-3">
+													<div className="shrink-0">
+														{avatarUrl
+															? (
+																	<img
+																		src={avatarUrl}
+																		alt={userName}
+																		className="h-16 w-16 rounded-[3px] border-2 border-border object-cover [box-shadow:2px_2px_0_var(--border)]"
+																	/>
+																)
+															: (
+																	<div className="flex h-16 w-16 items-center justify-center rounded-[3px] border-2 border-border bg-selected text-lg font-extrabold text-foreground [box-shadow:2px_2px_0_var(--border)]">
+																		{getInitials(userName)}
+																	</div>
+																)}
+													</div>
+													<div className="min-w-0 flex-1">
+														<p className="truncate text-base font-extrabold text-foreground">{userName}</p>
 														{userEmail && (
-															<p className="text-sm text-muted-foreground truncate">{userEmail}</p>
+															<p className="truncate text-sm font-semibold text-muted-foreground">{userEmail}</p>
 														)}
 													</div>
 												</div>
-												<Separator />
-												<Button variant="secondary" className="w-full justify-start gap-2" asChild>
-													<Link to="/profile" onClick={() => setIsProfileDialogOpen(false)}>
-														<User className="h-4 w-4" />
-														Profile
-													</Link>
-												</Button>
-												<Button
-													variant="destructive"
-													className="w-full justify-start gap-2"
-													onClick={handleLogout}
-													disabled={logoutMutation.isPending}
-												>
-													{logoutMutation.isPending ? "Logging out..." : "Logout"}
-												</Button>
+												<Separator className="h-0.5" />
+												<div className="grid gap-3">
+													<Button variant="secondary" className="w-full justify-between gap-2" asChild>
+														<Link to="/profile" onClick={() => setIsProfileDialogOpen(false)}>
+															<span className="inline-flex items-center gap-2">
+																<User className="h-4 w-4" />
+																Open profile
+															</span>
+															<ArrowUpRight className="h-4 w-4" />
+														</Link>
+													</Button>
+													<Button
+														variant="destructive"
+														className="w-full justify-start gap-2"
+														onClick={handleLogout}
+														disabled={logoutMutation.isPending}
+													>
+														<LogOut className="h-4 w-4" />
+														{logoutMutation.isPending ? "Signing out..." : "Log out"}
+													</Button>
+												</div>
 											</div>
 										</DialogContent>
 									</Dialog>
@@ -156,23 +175,36 @@ const Header = ({ className = "" }: HeaderProps) => {
 					<DialogContent className="sm:max-w-sm">
 						<DialogHeader>
 							<DialogTitle>
-								Menu
+								Command menu
 							</DialogTitle>
 							<DialogDescription>
-								Select what you want to visit.
+								Jump between coworking booking areas.
 							</DialogDescription>
 						</DialogHeader>
-						<nav className="mx-auto flex w-full flex-col gap-2">
+						<nav className="mx-auto flex w-full flex-col gap-3">
 							<Button
 								className="w-full justify-between gap-2"
 								asChild
 								onClick={() => setIsMenuDialogOpen(false)}
 							>
 								<Link to="/" className="flex w-full items-center">
-									Home
+									Booking overview
 									<ArrowUpRight className="h-4 w-4" />
 								</Link>
 							</Button>
+							{user && (
+								<Button
+									variant="secondary"
+									className="w-full justify-between gap-2"
+									asChild
+									onClick={() => setIsMenuDialogOpen(false)}
+								>
+									<Link to="/profile" className="flex w-full items-center">
+										Profile
+										<ArrowUpRight className="h-4 w-4" />
+									</Link>
+								</Button>
+							)}
 						</nav>
 					</DialogContent>
 				</Dialog>
