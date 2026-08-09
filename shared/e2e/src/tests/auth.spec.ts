@@ -3,6 +3,11 @@ import { ROUTES } from "@shared/routes/constants";
 
 const BACKEND_URL          = "http://localhost:3001";
 const PASSWORD = "password123";
+const SIGN_IN_TAB_NAME = /^(Sign In|Enter)$/;
+const SIGN_UP_TAB_NAME = /^(Sign Up|Create)$/;
+const EMAIL_FIELD_NAME = /^(Email|Account email)$/;
+const SIGN_IN_BUTTON_NAME = /^(Sign In|Enter coworking)$/;
+const SIGN_UP_BUTTON_NAME = /^(Sign Up|Create coworking account)$/;
 
 const uniqueEmail = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
 
@@ -10,13 +15,13 @@ test.describe("Email password auth", () => {
 	test.describe("Login page", () => {
 		test("renders sign in and sign up tabs", async ({ page }) => {
 			await page.goto("/auth/login");
-			await expect(page.getByRole("tab", { name: "Enter" })).toBeVisible();
-			await expect(page.getByRole("textbox", { name: "Account email" })).toBeVisible();
+			await expect(page.getByRole("tab", { name: SIGN_IN_TAB_NAME })).toBeVisible();
+			await expect(page.getByRole("textbox", { name: EMAIL_FIELD_NAME })).toBeVisible();
 			await expect(page.getByLabel("Password")).toBeVisible();
 
-			await page.getByRole("tab", { name: "Create" }).click();
+			await page.getByRole("tab", { name: SIGN_UP_TAB_NAME }).click();
 			await expect(page.getByRole("textbox", { name: "Name" })).toBeVisible();
-			await expect(page.getByRole("textbox", { name: "Account email" })).toBeVisible();
+			await expect(page.getByRole("textbox", { name: EMAIL_FIELD_NAME })).toBeVisible();
 			await expect(page.getByLabel("Password")).toBeVisible();
 		});
 	});
@@ -37,11 +42,11 @@ test.describe("Email password auth", () => {
 			const name = "Test User";
 
 			await page.goto("/auth/login");
-			await page.getByRole("tab", { name: "Create" }).click();
+			await page.getByRole("tab", { name: SIGN_UP_TAB_NAME }).click();
 			await page.getByRole("textbox", { name: "Name" }).fill(name);
-			await page.getByRole("textbox", { name: "Account email" }).fill(email);
+			await page.getByRole("textbox", { name: EMAIL_FIELD_NAME }).fill(email);
 			await page.getByLabel("Password").fill(PASSWORD);
-			await page.getByRole("button", { name: "Create coworking account" }).click();
+			await page.getByRole("button", { name: SIGN_UP_BUTTON_NAME }).click();
 
 			await expect(page).toHaveURL(new RegExp(`${ROUTES.PROFILE.path}$`));
 
@@ -67,9 +72,9 @@ test.describe("Email password auth", () => {
 			expect(res.ok()).toBe(true);
 
 			await page.goto("/auth/login");
-			await page.getByRole("textbox", { name: "Account email" }).fill(email);
+			await page.getByRole("textbox", { name: EMAIL_FIELD_NAME }).fill(email);
 			await page.getByLabel("Password").fill(PASSWORD);
-			await page.getByRole("button", { name: "Enter coworking" }).click();
+			await page.getByRole("button", { name: SIGN_IN_BUTTON_NAME }).click();
 
 			await expect(page).toHaveURL(new RegExp(`${ROUTES.PROFILE.path}$`));
 		});
