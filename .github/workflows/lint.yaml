@@ -60,6 +60,19 @@ jobs:
         image: mongo:7
         ports:
           - 27018:27017
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: app_template
+          POSTGRES_USER: app_template
+          POSTGRES_PASSWORD: app_template
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app_template -d app_template"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -74,3 +87,4 @@ jobs:
         env:
           CI: true
           MONGODB_URI: mongodb://127.0.0.1:27018
+          POSTGRES_URL: postgresql://app_template:app_template@127.0.0.1:5432/app_template
