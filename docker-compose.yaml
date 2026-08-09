@@ -1,4 +1,5 @@
 # Dev (default): docker compose down && docker compose up --build
+# Storybook: docker compose up storybook-dev --build, then open http://localhost:6006
 # Prod (VPS): docker compose --profile prod up -d --build
 # For prod, set VITE_APP_URL and VITE_API_URL in a root .env (see .env.example).
 
@@ -50,6 +51,25 @@ services:
         required: true
     depends_on:
       - backend-dev
+    networks:
+      - app-network
+
+  storybook-dev:
+    build:
+      context: .
+      dockerfile: apps/storybook/Dockerfile
+      target: dev
+    container_name: storybook-dev
+    develop:
+      watch:
+        - action: rebuild
+          path: ./apps/storybook/package.json
+    ports:
+      - "6006:6006"
+    volumes:
+      - ./apps/storybook:/app/apps/storybook
+      - ./shared:/app/shared
+      - /app/node_modules
     networks:
       - app-network
 

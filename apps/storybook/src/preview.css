@@ -1,0 +1,21 @@
+body {
+	margin: 0;
+}
+
+.sb-show-main {
+	background: var(--background);
+	color: var(--foreground);
+}
+
+.coworking-hud-story {
+	display: grid;
+	gap: 24px;
+	max-width: 960px;
+	padding: 32px;
+}
+
+.coworking-hud-grid {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@shar
 import { Skeleton } from "@shared/design-system/skeleton";
 import { useGetSession } from "@shared/queries";
 import { Link } from "@tanstack/react-router";
+import { ArrowLeft, Mail } from "lucide-react";
 
 export default function ProfilePage() {
 	const { data: session, isLoading } = useGetSession({ apiBaseUrl: import.meta.env.VITE_API_URL });
@@ -10,14 +11,13 @@ export default function ProfilePage() {
 	const user = session?.user;
 	const userEmail = user?.email ?? "";
 	const userName = user?.name || userEmail.split("@")[0];
-	const role = user ? (user as { role?: string }).role : undefined;
 
 	return (
-		<div className="container mx-auto max-w-lg px-4 py-10 md:py-16">
-			<Card className="border border-border bg-card shadow-sm">
+		<div className="container mx-auto grid max-w-3xl gap-6 px-4 py-10 md:py-16">
+			<Card>
 				<CardHeader className="space-y-1">
-					<CardTitle className="text-2xl font-semibold tracking-tight">
-						Profile
+					<CardTitle className="text-2xl font-extrabold tracking-normal">
+						Coworking record
 					</CardTitle>
 					<CardDescription>
 						Your account details from your sign-in provider.
@@ -27,7 +27,7 @@ export default function ProfilePage() {
 					{isLoading
 						? (
 								<div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-									<Skeleton className="size-24 shrink-0 rounded-full" />
+									<Skeleton className="size-24 shrink-0 rounded-[3px]" />
 									<div className="flex w-full flex-col gap-3">
 										<Skeleton className="h-6 w-48" />
 										<Skeleton className="h-4 w-full max-w-sm" />
@@ -38,22 +38,28 @@ export default function ProfilePage() {
 						: user
 							? (
 									<>
-										<div className="min-w-0 flex-1 space-y-1 text-center sm:text-left">
-											<p className="truncate text-lg font-semibold text-foreground">
-												{userName}
-											</p>
-											{userEmail && (
-												<p className="truncate text-sm text-muted-foreground">
-													{userEmail}
-												</p>
-											)}
-											{role && (
-												<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-													Role:
-													{" "}
-													<span className="text-foreground">{role}</span>
-												</p>
-											)}
+										<div className="grid gap-4 sm:grid-cols-[160px_1fr]">
+											<div className="grid place-items-center rounded-[3px] border-2 border-border bg-shade-1 p-4">
+												<div className="grid size-24 place-items-center rounded-[3px] border-2 border-border bg-selected text-2xl font-extrabold text-foreground [box-shadow:3px_3px_0_var(--border)]">
+													{userName ? userName.substring(0, 2).toUpperCase() : "??"}
+												</div>
+											</div>
+											<div className="grid gap-3">
+												<div className="rounded-[3px] border-2 border-border bg-shade-1 p-3">
+													<p className="text-xs font-extrabold text-muted-foreground">NAME</p>
+													<p className="truncate text-lg font-extrabold text-foreground">
+														{userName}
+													</p>
+												</div>
+												{userEmail && (
+													<div className="flex min-w-0 items-center gap-3 rounded-[3px] border-2 border-border bg-shade-1 p-3">
+														<Mail className="size-5 shrink-0" />
+														<p className="truncate text-sm font-semibold text-muted-foreground">
+															{userEmail}
+														</p>
+													</div>
+												)}
+											</div>
 										</div>
 									</>
 								)
@@ -64,7 +70,10 @@ export default function ProfilePage() {
 								)}
 					<div className="flex flex-wrap gap-2 pt-2">
 						<Button variant="outline" size="sm" asChild>
-							<Link to="/">Back to home</Link>
+							<Link to="/">
+								<ArrowLeft className="size-4" />
+								Back to booking overview
+							</Link>
 						</Button>
 					</div>
 				</CardContent>
