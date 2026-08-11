@@ -1,1 +1,1 @@
-{"root":["./src/env.d.ts","./src/index.ts","./src/inits/auth.init.ts","./src/routes/index.ts","./src/routes/auth/auth.controller.ts","./src/routes/auth/auth.routes.ts"],"version":"5.9.3"}
+{"root":["./src/env.d.ts","./src/index.ts","./src/routes/index.ts","./src/routes/auth/auth.controller.ts","./src/routes/auth/auth.routes.ts","./src/routes/auth/session.ts","./src/routes/buildings/buildings.controller.ts","./src/routes/buildings/buildings.routes.ts","./src/routes/floor-plans/floor-plans.controller.ts","./src/routes/floor-plans/floor-plans.routes.ts"],"version":"5.9.3"}

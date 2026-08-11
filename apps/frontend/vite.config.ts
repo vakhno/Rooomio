@@ -14,6 +14,11 @@ export default defineConfig({
 				target: process.env.VITE_API_URL,
 				changeOrigin: true,
 				secure: true
+			},
+			"/api/floor-plans": {
+				target: process.env.VITE_API_URL,
+				changeOrigin: true,
+				secure: true
 			}
 		},
 		host: "0.0.0.0",
