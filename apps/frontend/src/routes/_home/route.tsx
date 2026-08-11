@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 
 import Header from "@/components/compound/header";
 
@@ -7,10 +7,13 @@ export const Route = createFileRoute("/_home")({
 });
 
 function HomeLayout() {
+	const location = useLocation();
+	const isCanvasPage = location.pathname === "/builder" || location.pathname === "/floor";
+
 	return (
 		<>
 			<Header />
-			<main className="container mx-auto">
+			<main className={isCanvasPage ? "mx-auto w-full" : "container mx-auto"}>
 				<Outlet />
 			</main>
 		</>

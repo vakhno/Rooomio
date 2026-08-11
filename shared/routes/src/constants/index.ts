@@ -2,6 +2,8 @@ export const API_PREFIX = "/api" as const;
 
 export const API_MOUNT = {
     auth: `/auth`,
+    buildings: `/buildings`,
+    floorPlans: `/floor-plans`,
 } as const;
 
 export const API_SEGMENT = {
@@ -11,10 +13,21 @@ export const API_SEGMENT = {
         SIGN_UP: {path: '/sign-up'},
         SIGN_OUT: {path: '/sign-out'},
     },
+    BUILDINGS: {
+        LIST: {path: '/'},
+        MY: {path: '/my'},
+    },
+    FLOOR_PLANS: {
+        LIST: {path: '/'},
+        CURRENT: {path: '/current'},
+    },
 } as const;
 
 export const ROUTES = {
     HOME: {path: '/'},
+    BUILDINGS: {path: '/buildings'},
+    BUILDER: {path: '/builder'},
+    FLOOR: {path: '/floor'},
     LOGIN: {path: '/auth/login'},
     PROFILE: {path: '/profile'},
 };
@@ -24,6 +37,9 @@ export const BLOCKED_DURING_AUTH_LIST = [
 ] as const;
 
 export const AUTH_REQUIRED_PAGES_LIST = [
+    ROUTES.BUILDINGS.path,
+    ROUTES.BUILDER.path,
+    ROUTES.FLOOR.path,
     ROUTES.PROFILE.path,
 ] as const;
 

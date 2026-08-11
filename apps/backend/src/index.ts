@@ -1,4 +1,4 @@
-import { initAuthTables, initDb } from "@shared/pg";
+import { initAuthTables, initBuildingTables, initDb, initFloorPlanTables } from "@shared/pg";
 import { initSocketEvents, initSocketServer } from "@shared/sockets";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -21,6 +21,8 @@ expressApp.use(cors(corsConfig));
 
 await initDb();
 await initAuthTables();
+await initBuildingTables();
+await initFloorPlanTables();
 
 expressApp.use(helmet());
 expressApp.use(express.json());
