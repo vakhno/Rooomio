@@ -14,7 +14,7 @@ export default defineConfig({
 		baseURL: FRONTEND_URL,
 		trace: "on-first-retry",
 	},
-	projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], ...devices["Mobile Chrome"] } }],
+	projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], ...devices["Mobile Chrome"], channel: "chrome" } }],
 
 	// Start the test backend first, then the frontend pointing at it.
 	// Both servers are started in parallel; Playwright waits for both health

@@ -7,8 +7,8 @@ export default function LoginTabs() {
 	return (
 		<Tabs defaultValue="sign-in" className="w-full">
 			<TabsList className="grid w-full grid-cols-2">
-				<TabsTrigger value="sign-in">Sign In</TabsTrigger>
-				<TabsTrigger value="sign-up">Sign Up</TabsTrigger>
+				<TabsTrigger value="sign-in">Enter</TabsTrigger>
+				<TabsTrigger value="sign-up">Create</TabsTrigger>
 			</TabsList>
 			<TabsContent value="sign-in">
 				<SignInForm />

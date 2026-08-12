@@ -1,0 +1,30 @@
+{
+	"name": "storybook",
+	"type": "module",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"dev": "storybook dev --host 0.0.0.0 --port 6006",
+		"storybook": "storybook dev --host 0.0.0.0 --port 6006",
+		"build": "storybook build",
+		"lint": "tsc --noEmit",
+		"lint:fix": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@shared/design-system": "file:../../shared/design-system",
+		"lucide-react": "^0.511.0",
+		"react": "^19.2.1",
+		"react-dom": "^19.2.1",
+		"react-hook-form": "^7.76.0"
+	},
+	"devDependencies": {
+		"@storybook/react-vite": "^10.5.7",
+		"@tailwindcss/vite": "^4.1.7",
+		"@types/node": "^25.2.1",
+		"@types/react": "^19.1.2",
+		"@types/react-dom": "^19.1.2",
+		"storybook": "^10.5.7",
+		"typescript": "~5.8.3",
+		"vite": "^6.3.5"
+	}
+}

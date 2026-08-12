@@ -60,7 +60,7 @@ export default function SignUpForm() {
 					name="email"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Email</FormLabel>
+							<FormLabel>Account email</FormLabel>
 							<FormControl>
 								<Input type="email" autoComplete="email" {...field} />
 							</FormControl>
@@ -81,9 +81,13 @@ export default function SignUpForm() {
 						</FormItem>
 					)}
 				/>
-				{error && <p className="text-sm text-destructive">{error}</p>}
+				{error && (
+					<p className="rounded-[2px] border-2 border-destructive bg-shade-0 px-3 py-2 text-sm font-extrabold text-destructive">
+						{error}
+					</p>
+				)}
 				<Button type="submit" className="w-full" disabled={signUpMutation.isPending}>
-					{signUpMutation.isPending ? "Please wait" : "Sign Up"}
+					{signUpMutation.isPending ? "Creating account..." : "Create coworking account"}
 				</Button>
 			</form>
 		</Form>

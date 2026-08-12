@@ -1,6 +1,8 @@
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { authTablesSql } from "../auth-schema";
+import { buildingTablesSql } from "../building-schema";
+import { floorPlanTablesSql } from "../floor-plan-schema";
 
 const { Pool } = pg;
 
@@ -40,4 +42,12 @@ export const initDb = async () => {
 
 export const initAuthTables = async () => {
 	await getPgPool().query(authTablesSql);
+};
+
+export const initFloorPlanTables = async () => {
+	await getPgPool().query(floorPlanTablesSql);
+};
+
+export const initBuildingTables = async () => {
+	await getPgPool().query(buildingTablesSql);
 };

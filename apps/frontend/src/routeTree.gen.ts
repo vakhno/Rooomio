@@ -14,6 +14,11 @@ import { Route as HomeRouteRouteImport } from './routes/_home/route'
 import { Route as BlankRouteRouteImport } from './routes/_blank/route'
 import { Route as HomeIndexRouteImport } from './routes/_home/index'
 import { Route as PublicProfileRouteImport } from './routes/_public/profile'
+import { Route as HomeReservationsRouteImport } from './routes/_home/reservations'
+import { Route as HomeMyBuildingsRouteImport } from './routes/_home/my-buildings'
+import { Route as HomeFloorRouteImport } from './routes/_home/floor'
+import { Route as HomeBuildingsRouteImport } from './routes/_home/buildings'
+import { Route as HomeBuilderRouteImport } from './routes/_home/builder'
 import { Route as BlankAuthLoginRouteImport } from './routes/_blank/auth/login'
 
 const PublicRouteRoute = PublicRouteRouteImport.update({
@@ -38,6 +43,31 @@ const PublicProfileRoute = PublicProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => PublicRouteRoute,
 } as any)
+const HomeReservationsRoute = HomeReservationsRouteImport.update({
+  id: '/reservations',
+  path: '/reservations',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
+const HomeMyBuildingsRoute = HomeMyBuildingsRouteImport.update({
+  id: '/my-buildings',
+  path: '/my-buildings',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
+const HomeFloorRoute = HomeFloorRouteImport.update({
+  id: '/floor',
+  path: '/floor',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
+const HomeBuildingsRoute = HomeBuildingsRouteImport.update({
+  id: '/buildings',
+  path: '/buildings',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
+const HomeBuilderRoute = HomeBuilderRouteImport.update({
+  id: '/builder',
+  path: '/builder',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
 const BlankAuthLoginRoute = BlankAuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
@@ -46,11 +76,21 @@ const BlankAuthLoginRoute = BlankAuthLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof HomeIndexRoute
+  '/builder': typeof HomeBuilderRoute
+  '/buildings': typeof HomeBuildingsRoute
+  '/floor': typeof HomeFloorRoute
+  '/my-buildings': typeof HomeMyBuildingsRoute
+  '/reservations': typeof HomeReservationsRoute
   '/profile': typeof PublicProfileRoute
   '/auth/login': typeof BlankAuthLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof HomeIndexRoute
+  '/builder': typeof HomeBuilderRoute
+  '/buildings': typeof HomeBuildingsRoute
+  '/floor': typeof HomeFloorRoute
+  '/my-buildings': typeof HomeMyBuildingsRoute
+  '/reservations': typeof HomeReservationsRoute
   '/profile': typeof PublicProfileRoute
   '/auth/login': typeof BlankAuthLoginRoute
 }
@@ -59,20 +99,46 @@ export interface FileRoutesById {
   '/_blank': typeof BlankRouteRouteWithChildren
   '/_home': typeof HomeRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
+  '/_home/builder': typeof HomeBuilderRoute
+  '/_home/buildings': typeof HomeBuildingsRoute
+  '/_home/floor': typeof HomeFloorRoute
+  '/_home/my-buildings': typeof HomeMyBuildingsRoute
+  '/_home/reservations': typeof HomeReservationsRoute
   '/_public/profile': typeof PublicProfileRoute
   '/_home/': typeof HomeIndexRoute
   '/_blank/auth/login': typeof BlankAuthLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/profile' | '/auth/login'
+  fullPaths:
+    | '/'
+    | '/builder'
+    | '/buildings'
+    | '/floor'
+    | '/my-buildings'
+    | '/reservations'
+    | '/profile'
+    | '/auth/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/profile' | '/auth/login'
+  to:
+    | '/'
+    | '/builder'
+    | '/buildings'
+    | '/floor'
+    | '/my-buildings'
+    | '/reservations'
+    | '/profile'
+    | '/auth/login'
   id:
     | '__root__'
     | '/_blank'
     | '/_home'
     | '/_public'
+    | '/_home/builder'
+    | '/_home/buildings'
+    | '/_home/floor'
+    | '/_home/my-buildings'
+    | '/_home/reservations'
     | '/_public/profile'
     | '/_home/'
     | '/_blank/auth/login'
@@ -121,6 +187,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicProfileRouteImport
       parentRoute: typeof PublicRouteRoute
     }
+    '/_home/reservations': {
+      id: '/_home/reservations'
+      path: '/reservations'
+      fullPath: '/reservations'
+      preLoaderRoute: typeof HomeReservationsRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
+    '/_home/my-buildings': {
+      id: '/_home/my-buildings'
+      path: '/my-buildings'
+      fullPath: '/my-buildings'
+      preLoaderRoute: typeof HomeMyBuildingsRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
+    '/_home/floor': {
+      id: '/_home/floor'
+      path: '/floor'
+      fullPath: '/floor'
+      preLoaderRoute: typeof HomeFloorRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
+    '/_home/buildings': {
+      id: '/_home/buildings'
+      path: '/buildings'
+      fullPath: '/buildings'
+      preLoaderRoute: typeof HomeBuildingsRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
+    '/_home/builder': {
+      id: '/_home/builder'
+      path: '/builder'
+      fullPath: '/builder'
+      preLoaderRoute: typeof HomeBuilderRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
     '/_blank/auth/login': {
       id: '/_blank/auth/login'
       path: '/auth/login'
@@ -144,10 +245,20 @@ const BlankRouteRouteWithChildren = BlankRouteRoute._addFileChildren(
 )
 
 interface HomeRouteRouteChildren {
+  HomeBuilderRoute: typeof HomeBuilderRoute
+  HomeBuildingsRoute: typeof HomeBuildingsRoute
+  HomeFloorRoute: typeof HomeFloorRoute
+  HomeMyBuildingsRoute: typeof HomeMyBuildingsRoute
+  HomeReservationsRoute: typeof HomeReservationsRoute
   HomeIndexRoute: typeof HomeIndexRoute
 }
 
 const HomeRouteRouteChildren: HomeRouteRouteChildren = {
+  HomeBuilderRoute: HomeBuilderRoute,
+  HomeBuildingsRoute: HomeBuildingsRoute,
+  HomeFloorRoute: HomeFloorRoute,
+  HomeMyBuildingsRoute: HomeMyBuildingsRoute,
+  HomeReservationsRoute: HomeReservationsRoute,
   HomeIndexRoute: HomeIndexRoute,
 }
 

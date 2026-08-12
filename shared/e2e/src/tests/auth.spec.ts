@@ -10,13 +10,13 @@ test.describe("Email password auth", () => {
 	test.describe("Login page", () => {
 		test("renders sign in and sign up tabs", async ({ page }) => {
 			await page.goto("/auth/login");
-			await expect(page.getByRole("tab", { name: "Sign In" })).toBeVisible();
-			await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+			await expect(page.getByRole("tab", { name: "Enter" })).toBeVisible();
+			await expect(page.getByRole("textbox", { name: "Account email" })).toBeVisible();
 			await expect(page.getByLabel("Password")).toBeVisible();
 
-			await page.getByRole("tab", { name: "Sign Up" }).click();
+			await page.getByRole("tab", { name: "Create" }).click();
 			await expect(page.getByRole("textbox", { name: "Name" })).toBeVisible();
-			await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+			await expect(page.getByRole("textbox", { name: "Account email" })).toBeVisible();
 			await expect(page.getByLabel("Password")).toBeVisible();
 		});
 	});
@@ -37,11 +37,11 @@ test.describe("Email password auth", () => {
 			const name = "Test User";
 
 			await page.goto("/auth/login");
-			await page.getByRole("tab", { name: "Sign Up" }).click();
+			await page.getByRole("tab", { name: "Create" }).click();
 			await page.getByRole("textbox", { name: "Name" }).fill(name);
-			await page.getByRole("textbox", { name: "Email" }).fill(email);
+			await page.getByRole("textbox", { name: "Account email" }).fill(email);
 			await page.getByLabel("Password").fill(PASSWORD);
-			await page.getByRole("button", { name: "Sign Up" }).click();
+			await page.getByRole("button", { name: "Create coworking account" }).click();
 
 			await expect(page).toHaveURL(new RegExp(`${ROUTES.PROFILE.path}$`));
 
@@ -53,6 +53,38 @@ test.describe("Email password auth", () => {
 			expect(dbUser).not.toBeNull();
 			expect(dbUser.email).toBe(email);
 			expect(dbUser.name).toBe(name);
+		});
+
+		test("normalizes email and rejects duplicate variants", async ({ request }) => {
+			const email = uniqueEmail("normalize");
+			const password = "password123";
+
+			const first = await request.post(`${BACKEND_URL}/api/auth/sign-up`, {
+				data: { email: ` ${email.toUpperCase()} `, name: "First User", password },
+				headers: { Origin: "http://localhost:5183" },
+			});
+			expect(first.status()).toBe(201);
+
+			const duplicate = await request.post(`${BACKEND_URL}/api/auth/sign-up`, {
+				data: { email, name: "Second User", password },
+				headers: { Origin: "http://localhost:5183" },
+			});
+			expect(duplicate.status()).toBe(409);
+
+			const dbUserRes = await request.get(`${BACKEND_URL}/test/user-by-email`, {
+				params: { email },
+			});
+			const dbUser = await dbUserRes.json();
+			expect(dbUser.email).toBe(email);
+		});
+
+		test("rejects passwords longer than 72 characters", async ({ request }) => {
+			const res = await request.post(`${BACKEND_URL}/api/auth/sign-up`, {
+				data: { email: uniqueEmail("long-password"), name: "Long Password", password: "x".repeat(73) },
+				headers: { Origin: "http://localhost:5183" },
+			});
+
+			expect(res.status()).toBe(400);
 		});
 	});
 
@@ -67,9 +99,26 @@ test.describe("Email password auth", () => {
 			expect(res.ok()).toBe(true);
 
 			await page.goto("/auth/login");
-			await page.getByRole("textbox", { name: "Email" }).fill(email);
+			await page.getByRole("textbox", { name: "Account email" }).fill(email);
 			await page.getByLabel("Password").fill(PASSWORD);
-			await page.getByRole("button", { name: "Sign In" }).click();
+			await page.getByRole("button", { name: "Enter coworking" }).click();
+
+			await expect(page).toHaveURL(new RegExp(`${ROUTES.PROFILE.path}$`));
+		});
+
+		test("accepts email case and edge-space variants", async ({ page, request }) => {
+			const email = uniqueEmail("signin-normalize");
+
+			const res = await request.post(`${BACKEND_URL}/api/auth/sign-up`, {
+				data: { email, name: "Existing User", password: PASSWORD },
+				headers: { Origin: "http://localhost:5183" },
+			});
+			expect(res.ok()).toBe(true);
+
+			await page.goto("/auth/login");
+			await page.getByRole("textbox", { name: "Account email" }).fill(` ${email.toUpperCase()} `);
+			await page.getByLabel("Password").fill(PASSWORD);
+			await page.getByRole("button", { name: "Enter coworking" }).click();
 
 			await expect(page).toHaveURL(new RegExp(`${ROUTES.PROFILE.path}$`));
 		});

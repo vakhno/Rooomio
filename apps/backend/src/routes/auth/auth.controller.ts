@@ -4,31 +4,12 @@ import type { CookieOptions, Request, Response } from "express";
 import { getPgPool } from "@shared/pg";
 import { DEFAULT_USER_ROLE, SignInSchema, SignUpSchema } from "@shared/zod-schemas";
 import bcrypt from "bcryptjs";
-import jwt, { type JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { randomUUID } from "node:crypto";
 
-const TOKEN_COOKIE_NAME = "token";
-const TOKEN_TTL_SECONDS = 60 * 60 * 6;
+import { clearTokenCookie, findUserById, TOKEN_COOKIE_NAME, TOKEN_TTL_SECONDS, verifyToken } from "./session.js";
+
 const PASSWORD_SALT_ROUNDS = 10;
-
-interface TokenPayload extends JwtPayload {
-	id: string;
-}
-
-const verifyToken = (token: string): TokenPayload | null => {
-	try {
-		const data = jwt.verify(token, process.env.JWT_SECRET);
-
-		if (typeof data === "string" || typeof data.id !== "string") {
-			return null;
-		}
-
-		return data as TokenPayload;
-	}
-	catch {
-		return null;
-	}
-};
 
 const toSession = (user: UserSchemaType, expiresAt = new Date(Date.now() + TOKEN_TTL_SECONDS * 1000)): ClientSession => ({
 	user: {
@@ -59,21 +40,6 @@ const tokenCookieOptions = (): CookieOptions => {
 	};
 };
 
-const clearTokenCookie = (res: Response) => {
-	res.clearCookie(TOKEN_COOKIE_NAME, {
-		maxAge: undefined,
-	});
-};
-
-const findUserById = async (id: string) => {
-	const result = await getPgPool().query<UserSchemaType>(
-		`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where id = $1 limit 1`,
-		[id],
-	);
-
-	return result.rows[0] ?? null;
-};
-
 export const signIn = async (req: Request, res: Response) => {
 	const { body } = req;
 	const parsedBody = SignInSchema.safeParse(body);
@@ -89,7 +55,7 @@ export const signIn = async (req: Request, res: Response) => {
 		const clientPg = await getPgPool().connect();
 		const { data: { email: parsedBodyEmail, password: parsedBodyPassword } } = parsedBody;
 		const userQuery = await clientPg.query<UserSchemaType>(
-			`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where email = $1 limit 1`,
+			`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where lower(email) = $1 limit 1`,
 			[parsedBodyEmail],
 		);
 		const { rows: userQueryRows } = userQuery;
@@ -158,7 +124,7 @@ export const signUp = async (req: Request, res: Response) => {
 
 		try {
 			const existingUserQuery = await clientPg.query<UserSchemaType>(
-				`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where email = $1 limit 1`,
+				`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where lower(email) = $1 limit 1`,
 				[parsedBodyEmail],
 			);
 
