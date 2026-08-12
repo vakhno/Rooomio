@@ -13,7 +13,9 @@ export {
 } from "./reservation-schemas";
 export {
 	isUtcIso,
+	createWeeklyReservationOccurrences,
 	MAX_RESERVATION_MINUTES,
+	MAX_WEEKLY_RECURRENCE_COUNT,
 	OFFICE_TIME_ZONE,
 	reservationRangesOverlap,
 	SLOT_MINUTES,

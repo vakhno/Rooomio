@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { reservationRangesOverlap, validateReservationOfficeHours } from "@shared/sockets";
+import { createWeeklyReservationOccurrences, reservationRangesOverlap, validateReservationOfficeHours } from "@shared/sockets";
 
 const at = (iso: string) => new Date(iso);
 
@@ -67,5 +67,26 @@ describe("validateReservationOfficeHours", () => {
 			schedule: weekdaySchedule,
 			start: "2026-08-12T05:30:00.000Z"
 		})).toBe("Reservation must be inside room working hours.");
+	});
+});
+
+describe("createWeeklyReservationOccurrences", () => {
+	it("creates the requested number of weekly occurrences", () => {
+		expect(createWeeklyReservationOccurrences(
+			"2026-08-12T09:00:00.000Z",
+			"2026-08-12T10:00:00.000Z",
+			8
+		)).toHaveLength(8);
+	});
+
+	it("keeps the same Europe/Kyiv local time across daylight-saving changes", () => {
+		expect(createWeeklyReservationOccurrences(
+			"2026-10-20T06:00:00.000Z",
+			"2026-10-20T07:00:00.000Z",
+			2
+		)).toEqual([
+			{ end: "2026-10-20T07:00:00.000Z", index: 0, start: "2026-10-20T06:00:00.000Z" },
+			{ end: "2026-10-27T08:00:00.000Z", index: 1, start: "2026-10-27T07:00:00.000Z" }
+		]);
 	});
 });

@@ -17,7 +17,12 @@ import {
 	ReservationHoldPayloadSchema,
 	ReservationRoomPayloadSchema
 } from "../reservation-schemas";
-import { reservationRangesOverlap, validateReservationInput, validateReservationOfficeHours } from "../reservation-rules";
+import {
+	createWeeklyReservationOccurrences,
+	reservationRangesOverlap,
+	validateReservationInput,
+	validateReservationOfficeHours
+} from "../reservation-rules";
 
 type ReservableRoom = {
 	id: string;
@@ -235,6 +240,7 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 
 			const hold = holds.get(parsedPayload.data.holdId);
 			const title = parsedPayload.data.title.trim();
+			const recurrenceCount = parsedPayload.data.recurrenceCount;
 
 			if (!hold || hold.ownerId !== ownerId) {
 				reply?.({ error: "Reservation hold is no longer available.", ok: false });
@@ -249,12 +255,36 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 				return;
 			}
 
-			const validationError = validateBooking({
-				room,
-				end: hold.end,
-				start: hold.start,
-				title
-			});
+			const occurrences = createWeeklyReservationOccurrences(hold.start, hold.end, recurrenceCount);
+
+			if (occurrences.length !== recurrenceCount) {
+				deleteHold(io, hold.id);
+				reply?.({ error: "Weekly recurrence count must be from 1 to 52.", ok: false });
+				return;
+			}
+
+			const validationError = occurrences
+				.map((occurrence) => {
+					const occurrenceLabel = recurrenceCount > 1 ? `Occurrence ${occurrence.index + 1}: ` : "";
+					const error = validateBooking({
+						room,
+						end: occurrence.end,
+						start: occurrence.start,
+						title
+					});
+
+					if (error)
+						return `${occurrenceLabel}${error}`;
+
+					if (hasReservationOverlap(hold.roomId, occurrence.start, occurrence.end))
+						return `${occurrenceLabel}This time range was already reserved.`;
+
+					if (hasHoldOverlap(hold.roomId, occurrence.start, occurrence.end, hold.id))
+						return `${occurrenceLabel}This time range is already selected or reserved.`;
+
+					return null;
+				})
+				.find(Boolean);
 
 			if (validationError) {
 				deleteHold(io, hold.id);
@@ -262,28 +292,29 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 				return;
 			}
 
-			if (hasReservationOverlap(hold.roomId, hold.start, hold.end)) {
-				deleteHold(io, hold.id);
-				reply?.({ error: "This time range was already reserved.", ok: false });
-				return;
-			}
-
-			const reservation: RoomReservationWire = {
-				end: hold.end,
+			const seriesId = recurrenceCount > 1 ? globalThis.crypto.randomUUID() : undefined;
+			const createdReservations = occurrences.map((occurrence): RoomReservationWire => ({
+				end: occurrence.end,
 				floorId: hold.floorId,
 				id: globalThis.crypto.randomUUID(),
 				ownerId,
 				roomId: hold.roomId,
 				roomName: room?.name ?? hold.roomName,
-				start: hold.start,
+				seriesCount: seriesId ? recurrenceCount : undefined,
+				seriesId,
+				seriesIndex: seriesId ? occurrence.index : undefined,
+				start: occurrence.start,
 				title
-			};
+			}));
 
-			reservations.set(reservation.id, reservation);
+			for (const reservation of createdReservations)
+				reservations.set(reservation.id, reservation);
+
 			deleteHold(io, hold.id);
 			rescheduleRoomNotifications(io, hold.roomId);
-			io.to(roomChannel(hold.roomId)).emit("reservation:created", reservation);
-			io.emit("reservation:my:changed", reservation.ownerId);
+			for (const reservation of createdReservations)
+				io.to(roomChannel(hold.roomId)).emit("reservation:created", reservation);
+			io.emit("reservation:my:changed", ownerId);
 			reply?.({ ok: true });
 		});
 
@@ -298,10 +329,17 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 			if (!reservation || reservation.roomId !== parsedPayload.data.roomId || reservation.ownerId !== ownerId)
 				return;
 
-			reservations.delete(parsedPayload.data.id);
-			clearNotification(reservation.id);
+			const deletedReservations = parsedPayload.data.scope === "series" && reservation.seriesId
+				? [...reservations.values()].filter(item => item.seriesId === reservation.seriesId && item.ownerId === ownerId)
+				: [reservation];
+
+			for (const item of deletedReservations) {
+				reservations.delete(item.id);
+				clearNotification(item.id);
+				io.to(roomChannel(item.roomId)).emit("reservation:deleted", { id: item.id, roomId: item.roomId });
+			}
+
 			rescheduleRoomNotifications(io, reservation.roomId);
-			io.to(roomChannel(parsedPayload.data.roomId)).emit("reservation:deleted", parsedPayload.data);
 			io.emit("reservation:my:changed", reservation.ownerId);
 		});
 

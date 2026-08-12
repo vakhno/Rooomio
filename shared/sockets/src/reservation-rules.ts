@@ -20,6 +20,7 @@ export type ReservationOfficeHoursInput = {
 
 export const SLOT_MINUTES = 30;
 export const MAX_RESERVATION_MINUTES = 4 * 60;
+export const MAX_WEEKLY_RECURRENCE_COUNT = 52;
 export const OFFICE_TIME_ZONE = "Europe/Kyiv";
 
 const officeDateParts = (date: Date) => {
@@ -43,6 +44,20 @@ const officeDateParts = (date: Date) => {
 		weekday: value("weekday").toLowerCase(),
 		year: Number(value("year"))
 	};
+};
+
+const dateTimeFromParts = (parts: ReturnType<typeof officeDateParts>) =>
+	Date.UTC(parts.year, parts.month - 1, parts.day, parts.hours, parts.minutes);
+
+const officeDateToUtc = (parts: ReturnType<typeof officeDateParts>) => {
+	let utc = dateTimeFromParts(parts);
+
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		const actual = officeDateParts(new Date(utc));
+		utc += dateTimeFromParts(parts) - dateTimeFromParts(actual);
+	}
+
+	return new Date(utc);
 };
 
 const minutesFromTime = (value: string) => {
@@ -116,4 +131,29 @@ export function validateReservationOfficeHours({ end, schedule, start }: Reserva
 		return "Reservation must be inside room working hours.";
 
 	return null;
+}
+
+export function createWeeklyReservationOccurrences(start: string, end: string, count: number) {
+	const startDate = toDate(start);
+	const endDate = toDate(end);
+
+	if (!startDate || !endDate || count < 1 || count > MAX_WEEKLY_RECURRENCE_COUNT)
+		return [];
+
+	const durationMs = endDate.getTime() - startDate.getTime();
+	const startParts = officeDateParts(startDate);
+
+	return Array.from({ length: count }, (_, index) => {
+		const occurrenceStart = officeDateToUtc({
+			...startParts,
+			day: startParts.day + index * 7
+		});
+		const occurrenceEnd = new Date(occurrenceStart.getTime() + durationMs);
+
+		return {
+			end: occurrenceEnd.toISOString(),
+			index,
+			start: occurrenceStart.toISOString()
+		};
+	});
 }

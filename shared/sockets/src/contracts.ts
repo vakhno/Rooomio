@@ -14,6 +14,9 @@ export type RoomReservationWire = {
 	ownerId: string;
 	roomId: string;
 	roomName: string;
+	seriesCount?: number;
+	seriesId?: string;
+	seriesIndex?: number;
 	start: string;
 	title: string;
 };
