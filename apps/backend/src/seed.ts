@@ -1,4 +1,3 @@
-import type { FloorLayout } from "@shared/zod-schemas";
 import type { Socket } from "socket.io-client";
 
 import {
@@ -8,33 +7,33 @@ import {
 	initDb,
 	initFloorPlanTables,
 } from "@shared/pg";
+import { type FloorLayout, FloorLayoutSchema } from "@shared/zod-schemas";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { readFileSync } from "node:fs";
 import { io } from "socket.io-client";
 
 const password = "Roomio2026!";
 const now = new Date();
 const ids = {
-	building: "seed-building-roomio-hq",
-	floor: "seed-floor-main",
+	shelbyBuilding: "seed-building-roomio-hq",
+	shelbyFloor: "seed-floor-main",
 	shelbyAccount: "seed-account-shelby",
 	shelbyUser: "seed-user-shelby",
+	sparrowBuilding: "seed-building-sparrow-roomio-hq",
+	sparrowFloor: "seed-floor-sparrow-main",
 	sparrowAccount: "seed-account-sparrow",
 	sparrowUser: "seed-user-sparrow",
 };
 
+const seedProfiles = [
+	{ buildingId: ids.shelbyBuilding, buildingName: "Shelby Roomio HQ", floorId: ids.shelbyFloor, ownerId: ids.shelbyUser, roomPrefix: "seed-shelby-room" },
+	{ buildingId: ids.sparrowBuilding, buildingName: "Sparrow Roomio HQ", floorId: ids.sparrowFloor, ownerId: ids.sparrowUser, roomPrefix: "seed-sparrow-room" },
+] as const;
+
 const users = [
 	{ accountId: ids.shelbyAccount, email: "shelby@roomio.test", id: ids.shelbyUser, name: "Shelby" },
 	{ accountId: ids.sparrowAccount, email: "sparrow@roomio.test", id: ids.sparrowUser, name: "Sparrow" },
-];
-
-const rooms: NonNullable<FloorLayout["rooms"]> = [
-	{ bounds: { maxCol: 5, maxRow: 4, minCol: 1, minRow: 1 }, capacity: 6, floor: "1st floor", id: "seed-room-aquarium", name: "Aquarium", schedule: [] },
-	{ bounds: { maxCol: 11, maxRow: 4, minCol: 7, minRow: 1 }, capacity: 10, floor: "1st floor", id: "seed-room-mars", name: "Mars", schedule: [] },
-	{ bounds: { maxCol: 17, maxRow: 4, minCol: 13, minRow: 1 }, capacity: 8, floor: "1st floor", id: "seed-room-gagarin", name: "Gagarin", schedule: [] },
-	{ bounds: { maxCol: 5, maxRow: 10, minCol: 1, minRow: 7 }, capacity: 4, floor: "1st floor", id: "seed-room-luna", name: "Luna", schedule: [] },
-	{ bounds: { maxCol: 11, maxRow: 10, minCol: 7, minRow: 7 }, capacity: 12, floor: "1st floor", id: "seed-room-orion", name: "Orion", schedule: [] },
-	{ bounds: { maxCol: 17, maxRow: 10, minCol: 13, minRow: 7 }, capacity: 16, floor: "1st floor", id: "seed-room-apollo", name: "Apollo", schedule: [] },
 ];
 
 const schedule = [
@@ -47,14 +46,23 @@ const schedule = [
 	{ closesAt: "19:00", day: "sunday", dayOff: true, opensAt: "09:00" },
 ] satisfies NonNullable<FloorLayout["rooms"]>[number]["schedule"];
 
-const layout: FloorLayout = {
-	cols: 19,
-	floor: Array.from({ length: 19 * 12 }, (_, index) => [index % 19, Math.floor(index / 19)]),
-	floorMaterials: [],
-	rooms: rooms.map(room => ({ ...room, schedule })),
-	rows: 12,
-	walls: [],
-};
+const baseLayout = FloorLayoutSchema.parse(JSON.parse(readFileSync(new URL("./seed-floor-layout.json", import.meta.url), "utf8")));
+const roomNames = ["Aquarium", "Mars", "Sol", "Luna", "Orion"];
+const roomCapacities = [6, 6, 12, 2, 2];
+const seedLayout = (profile: (typeof seedProfiles)[number]): FloorLayout => ({
+	...baseLayout,
+	rooms: baseLayout.rooms.map((room, index) => ({
+		...room,
+		capacity: roomCapacities[index] ?? room.capacity,
+		floor: "1st floor",
+		id: `${profile.roomPrefix}-${index + 1}`,
+		name: roomNames[index] ?? room.name,
+		schedule,
+	})),
+});
+const shelbyLayout = seedLayout(seedProfiles[0]);
+const sparrowLayout = seedLayout(seedProfiles[1]);
+const allRooms = [...shelbyLayout.rooms, ...sparrowLayout.rooms];
 
 const nextBusinessDate = (offset: number) => {
 	const date = new Date();
@@ -74,10 +82,10 @@ const nextBusinessDate = (offset: number) => {
 };
 
 const demoBookings = [
-	{ dayOffset: 0, ownerId: ids.shelbyUser, roomId: "seed-room-aquarium", startHourUtc: 10, title: "Design review" },
-	{ dayOffset: 1, ownerId: ids.sparrowUser, roomId: "seed-room-mars", startHourUtc: 12, title: "Sprint planning" },
-	{ dayOffset: 2, ownerId: ids.shelbyUser, roomId: "seed-room-gagarin", startHourUtc: 14, title: "Client sync" },
-	{ dayOffset: 3, ownerId: ids.sparrowUser, roomId: "seed-room-orion", startHourUtc: 9, title: "Roadmap check" },
+	{ dayOffset: 0, floorId: ids.shelbyFloor, ownerId: ids.shelbyUser, roomId: shelbyLayout.rooms[0]?.id ?? "", startHourUtc: 10, title: "Design review" },
+	{ dayOffset: 1, floorId: ids.sparrowFloor, ownerId: ids.sparrowUser, roomId: sparrowLayout.rooms[1]?.id ?? "", startHourUtc: 12, title: "Sprint planning" },
+	{ dayOffset: 2, floorId: ids.shelbyFloor, ownerId: ids.shelbyUser, roomId: shelbyLayout.rooms[2]?.id ?? "", startHourUtc: 14, title: "Client sync" },
+	{ dayOffset: 3, floorId: ids.sparrowFloor, ownerId: ids.sparrowUser, roomId: sparrowLayout.rooms[3]?.id ?? "", startHourUtc: 9, title: "Roadmap check" },
 ];
 
 const seedDatabase = async () => {
@@ -106,26 +114,31 @@ const seedDatabase = async () => {
 		);
 	}
 
-	await pool.query(
-		`insert into "building" (id, "ownerId", name, address, "floorCount", "createdAt", "updatedAt")
-		 values ($1, $2, 'Roomio HQ', 'Demo Avenue 1, Kyiv', 1, $3, $3)
-		 on conflict (id)
-		 do update set name = excluded.name, address = excluded.address, "floorCount" = excluded."floorCount", "updatedAt" = excluded."updatedAt"`,
-		[ids.building, ids.shelbyUser, now],
-	);
+	for (const profile of seedProfiles) {
+		await pool.query(
+			`insert into "building" (id, "ownerId", name, address, "floorCount", "createdAt", "updatedAt")
+			 values ($1, $2, $3, 'Demo Avenue 1, Kyiv', 1, $4, $4)
+			 on conflict (id)
+			 do update set name = excluded.name, address = excluded.address, "floorCount" = excluded."floorCount", "updatedAt" = excluded."updatedAt"`,
+			[profile.buildingId, profile.ownerId, profile.buildingName, now],
+		);
 
-	await pool.query(
-		`insert into "floorPlan" (id, "buildingId", "ownerId", "userId", floor, name, structure, layout, "createdAt", "updatedAt")
-		 values ($1, $2, $3, $3, 1, 'Demo office', $4, $4, $5, $5)
-		 on conflict ("buildingId", floor) where "buildingId" is not null
-		 do update set name = excluded.name, structure = excluded.structure, layout = excluded.layout, "updatedAt" = excluded."updatedAt"`,
-		[ids.floor, ids.building, ids.shelbyUser, JSON.stringify(layout), now],
-	);
+		const profileLayout = seedLayout(profile);
+		await pool.query(
+			`insert into "floorPlan" (id, "buildingId", "ownerId", "userId", floor, name, structure, layout, "createdAt", "updatedAt")
+			 values ($1, $2, $3, $3, 1, 'Demo office', $4, $4, $5, $5)
+			 on conflict ("buildingId", floor) where "buildingId" is not null
+			 do update set name = excluded.name, structure = excluded.structure, layout = excluded.layout, "updatedAt" = excluded."updatedAt"`,
+			[profile.floorId, profile.buildingId, profile.ownerId, JSON.stringify(profileLayout), now],
+		);
+	}
 };
 
 const connectSeedUser = async (apiUrl: string, userId: string) => {
 	const token = jwt.sign({ id: userId, role: "user" }, process.env.JWT_SECRET, { expiresIn: "6h" });
 	const socket = io(apiUrl, {
+		autoConnect: false,
+		auth: { token },
 		extraHeaders: {
 			Cookie: `token=${encodeURIComponent(token)}`,
 		},
@@ -134,8 +147,37 @@ const connectSeedUser = async (apiUrl: string, userId: string) => {
 	});
 
 	await new Promise<void>((resolve, reject) => {
-		socket.once("connect", resolve);
-		socket.once("connect_error", reject);
+		let onConnect: () => void;
+		let onDisconnect: () => void;
+		let onError: (error: Error) => void;
+		let timeout: ReturnType<typeof setTimeout>;
+		const cleanup = () => {
+			clearTimeout(timeout);
+			socket.off("connect", onConnect);
+			socket.off("connect_error", onError);
+			socket.off("disconnect", onDisconnect);
+		};
+		onConnect = () => {
+			cleanup();
+			resolve();
+		};
+		onError = (error: Error) => {
+			cleanup();
+			reject(error);
+		};
+		onDisconnect = () => {
+			cleanup();
+			reject(new Error("Seed socket was disconnected before it could connect."));
+		};
+		timeout = setTimeout(() => {
+			cleanup();
+			reject(new Error(`Could not connect seed socket to ${apiUrl}. Is the backend running?`));
+		}, 5_000);
+
+		socket.once("connect", onConnect);
+		socket.once("connect_error", onError);
+		socket.once("disconnect", onDisconnect);
+		socket.connect();
 	});
 
 	return socket;
@@ -152,8 +194,26 @@ const emitAck = (socket: Socket, event: string, payload: unknown) =>
 	});
 
 const listMine = (socket: Socket) =>
-	new Promise<Array<{ roomId: string; start: string; title: string }>>((resolve) => {
-		socket.once("reservation:my:state", resolve);
+	new Promise<Array<{ roomId: string; start: string; title: string }>>((resolve, reject) => {
+		let onDisconnect: () => void;
+		let onState: (items: Array<{ roomId: string; start: string; title: string }>) => void;
+		const timeout = setTimeout(() => reject(new Error("Timed out loading existing seed reservations.")), 5_000);
+		const cleanup = () => {
+			clearTimeout(timeout);
+			socket.off("disconnect", onDisconnect);
+			socket.off("reservation:my:state", onState);
+		};
+		onDisconnect = () => {
+			cleanup();
+			reject(new Error("Seed socket disconnected while loading existing reservations."));
+		};
+		onState = (items: Array<{ roomId: string; start: string; title: string }>) => {
+			cleanup();
+			resolve(items);
+		};
+
+		socket.once("disconnect", onDisconnect);
+		socket.once("reservation:my:state", onState);
 		socket.emit("reservation:my:list");
 	});
 
@@ -183,10 +243,10 @@ const seedDemoBookings = async () => {
 			const holdId = globalThis.crypto.randomUUID();
 			const holdAck = await emitAck(socket, "reservation:hold:upsert", {
 				end: end.toISOString(),
-				floorId: ids.floor,
+				floorId: booking.floorId,
 				holdId,
 				roomId: booking.roomId,
-				roomName: rooms.find(room => room.id === booking.roomId)?.name ?? "Room",
+				roomName: allRooms.find(room => room.id === booking.roomId)?.name ?? "Room",
 				start: start.toISOString(),
 			});
 

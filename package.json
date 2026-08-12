@@ -16,7 +16,6 @@
 		"test:integration": "npm run test --workspace=@shared/integration",
 		"test:e2e": "npm run test --workspace=@shared/e2e",
 		"test": "npm run test:unit && npm run test:integration && npm run test:e2e",
-		"seed": "npm run seed --workspace=backend",
 		"prepare": "husky"
 	},
 	"author": "",
