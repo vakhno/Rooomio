@@ -36,6 +36,9 @@ export type RoomReservation = {
 	ownerId: string;
 	roomId: string;
 	roomName: string;
+	seriesCount?: number;
+	seriesId?: string;
+	seriesIndex?: number;
 	start: Date;
 	title: string;
 };
@@ -49,6 +52,7 @@ const VISIBLE_DAYS = 7;
 const SLOTS_PER_DAY = 48;
 const SLOT_MINUTES = 30;
 const MAX_RESERVATION_MINUTES = 4 * 60;
+const MAX_WEEKLY_RECURRENCE_COUNT = 52;
 const OFFICE_TIME_ZONE = "Europe/Kyiv";
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -165,6 +169,9 @@ const fromWireReservation = (reservation: RoomReservationWire): RoomReservation 
 	ownerId: reservation.ownerId,
 	roomId: reservation.roomId,
 	roomName: reservation.roomName,
+	seriesCount: reservation.seriesCount,
+	seriesId: reservation.seriesId,
+	seriesIndex: reservation.seriesIndex,
 	start: new Date(reservation.start),
 	title: reservation.title
 });
@@ -191,6 +198,7 @@ export function RoomReservationGantt({
 	const [selectionEnd, setSelectionEnd] = useState<SlotRef | null>(null);
 	const [pending, setPending] = useState<{ end: Date; start: Date } | null>(null);
 	const [pendingRange, setPendingRange] = useState<{ end: number; start: number } | null>(null);
+	const [recurrenceCount, setRecurrenceCount] = useState(1);
 	const [title, setTitle] = useState("");
 	const [holds, setHolds] = useState<RoomReservationHold[]>([]);
 	const [socketId, setSocketId] = useState<string | null>(null);
@@ -213,6 +221,7 @@ export function RoomReservationGantt({
 		setSelectionEnd(null);
 		setPending(null);
 		setPendingRange(null);
+		setRecurrenceCount(1);
 		setTitle("");
 	};
 
@@ -466,22 +475,11 @@ export function RoomReservationGantt({
 		const holdId = holdIdRef.current;
 
 		if (!socketRef.current?.connected || !holdId) {
-			onCreate({
-				end: pending.end,
-				floorId,
-				id: globalThis.crypto?.randomUUID?.() ?? `${room.id}-${Date.now()}`,
-				ownerId: currentUserId,
-				roomId: room.id,
-				roomName: room.name,
-				start: pending.start,
-				title: trimmedTitle
-			});
-			clearLocalSelection();
-			toast.success("Reservation saved.");
+			toast.error("Reservation failed. Please reconnect and try again.");
 			return;
 		}
 
-		const parsedPayload = ReservationCommitPayloadSchema.safeParse({ holdId, title: trimmedTitle });
+		const parsedPayload = ReservationCommitPayloadSchema.safeParse({ holdId, recurrenceCount, title: trimmedTitle });
 
 		if (!parsedPayload.success) {
 			toast.error("Title must be 1 to 100 characters.");
@@ -502,7 +500,7 @@ export function RoomReservationGantt({
 				return;
 			}
 
-			toast.success("Reservation saved.");
+			toast.success(recurrenceCount > 1 ? "Reservation series saved." : "Reservation saved.");
 		});
 	};
 
@@ -543,19 +541,22 @@ export function RoomReservationGantt({
 		);
 	};
 
-	const deleteReservation = () => {
+	const deleteReservation = (scope: "occurrence" | "series" = "occurrence") => {
 		if (!deleteTarget)
 			return;
 
 		if (socketRef.current?.connected) {
-			socketRef.current.emit("reservation:delete", { id: deleteTarget.id, roomId: room.id });
+			socketRef.current.emit("reservation:delete", { id: deleteTarget.id, roomId: room.id, scope });
 		}
 		else {
-			onDelete(deleteTarget.id);
+			if (scope === "series" && deleteTarget.seriesId)
+				reservations.filter(reservation => reservation.seriesId === deleteTarget.seriesId).forEach(reservation => onDelete(reservation.id));
+			else
+				onDelete(deleteTarget.id);
 		}
 
 		setDeleteTarget(null);
-		toast.success("Reservation canceled.");
+		toast.success(scope === "series" ? "Reservation series canceled." : "Reservation canceled.");
 	};
 
 	const renderHold = (day: number, slot: number) => {
@@ -746,6 +747,17 @@ export function RoomReservationGantt({
 									placeholder="Planning session"
 								/>
 							</label>
+							<label className="block space-y-2 text-sm font-extrabold text-foreground">
+								<span>Weekly occurrences</span>
+								<Input
+									inputMode="numeric"
+									max={MAX_WEEKLY_RECURRENCE_COUNT}
+									min={1}
+									type="number"
+									value={recurrenceCount}
+									onChange={event => setRecurrenceCount(Math.min(MAX_WEEKLY_RECURRENCE_COUNT, Math.max(1, Number(event.currentTarget.value) || 1)))}
+								/>
+							</label>
 							<div className="flex flex-wrap justify-end gap-2">
 								<Button type="button" variant="outline" onClick={cancelPending}>Cancel</Button>
 								<Button type="submit" disabled={!title.trim()}>Confirm reservation</Button>
@@ -759,12 +771,19 @@ export function RoomReservationGantt({
 					<AlertDialogHeader>
 						<AlertDialogTitle>Cancel reservation?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This removes your reservation from the room schedule.
+							{deleteTarget?.seriesId
+								? "Cancel this occurrence only, or remove the full weekly series."
+								: "This removes your reservation from the room schedule."}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Keep reservation</AlertDialogCancel>
-						<AlertDialogAction onClick={deleteReservation}>Cancel reservation</AlertDialogAction>
+						{deleteTarget?.seriesId && (
+							<AlertDialogAction onClick={() => deleteReservation("series")}>Cancel series</AlertDialogAction>
+						)}
+						<AlertDialogAction onClick={() => deleteReservation("occurrence")}>
+							{deleteTarget?.seriesId ? "Cancel occurrence" : "Cancel reservation"}
+						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

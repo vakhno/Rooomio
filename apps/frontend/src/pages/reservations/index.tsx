@@ -145,16 +145,17 @@ export default function ReservationsPage() {
 		};
 	}, [reservations, userId]);
 
-	const cancelReservation = () => {
+	const cancelReservation = (scope: "occurrence" | "series" = "occurrence") => {
 		if (!cancelTarget)
 			return;
 
 		socketRef.current?.emit("reservation:delete", {
 			id: cancelTarget.id,
-			roomId: cancelTarget.roomId
+			roomId: cancelTarget.roomId,
+			scope
 		});
 		setCancelTarget(null);
-		toast.success("Reservation canceled.");
+		toast.success(scope === "series" ? "Reservation series canceled." : "Reservation canceled.");
 	};
 
 	if (isLoading)
@@ -199,12 +200,19 @@ export default function ReservationsPage() {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Cancel reservation?</AlertDialogTitle>
 						<AlertDialogDescription>
-							Only your own reservations can be canceled.
+							{cancelTarget?.seriesId
+								? "Cancel this occurrence only, or remove the full weekly series."
+								: "Only your own reservations can be canceled."}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Keep reservation</AlertDialogCancel>
-						<AlertDialogAction onClick={cancelReservation}>Cancel reservation</AlertDialogAction>
+						{cancelTarget?.seriesId && (
+							<AlertDialogAction onClick={() => cancelReservation("series")}>Cancel series</AlertDialogAction>
+						)}
+						<AlertDialogAction onClick={() => cancelReservation("occurrence")}>
+							{cancelTarget?.seriesId ? "Cancel occurrence" : "Cancel reservation"}
+						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
