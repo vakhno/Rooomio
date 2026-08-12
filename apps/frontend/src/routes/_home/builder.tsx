@@ -3,6 +3,12 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import BuilderPage from "@/pages/builder";
 
+const parseFloor = (value: unknown) => {
+	const floor = typeof value === "number" ? value : typeof value === "string" ? Number.parseInt(value, 10) : Number.NaN;
+
+	return Number.isInteger(floor) && floor > 0 ? floor : undefined;
+};
+
 export const Route = createFileRoute("/_home/builder")({
 	component: Builder,
 	head: () => ({
@@ -16,7 +22,9 @@ export const Route = createFileRoute("/_home/builder")({
 		]
 	}),
 	validateSearch: (search: Record<string, unknown>) => ({
-		buildingId: typeof search.buildingId === "string" ? search.buildingId : undefined
+		buildingId: typeof search.buildingId === "string" ? search.buildingId : undefined,
+		floor: parseFloor(search.floor),
+		mode: search.mode === "new" ? "new" : undefined
 	})
 });
 

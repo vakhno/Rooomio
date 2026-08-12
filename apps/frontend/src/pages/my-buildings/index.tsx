@@ -50,6 +50,10 @@ export default function MyBuildingsPage() {
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [form, setForm] = useState({ address: "", floorCount: 1, name: "" });
 	const myBuildings = buildings.data ?? [];
+	const existingFloors = new Set((floorPlans.data ?? []).map(floor => floor.floor));
+	const nextFloor = selectedBuilding
+		? Array.from({ length: selectedBuilding.floorCount }, (_, index) => index + 1).find(floor => !existingFloors.has(floor))
+		: undefined;
 
 	const handleCreate = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -170,12 +174,21 @@ export default function MyBuildingsPage() {
 								<p className="text-xs font-extrabold text-muted-foreground">Floors</p>
 								<FloorList floors={floorPlans.data ?? []} isLoading={floorPlans.isLoading} />
 							</div>
-							<Button asChild>
-								<Link to="/builder" search={{ buildingId: selectedBuilding.id }}>
-									<Plus className="size-4" />
-									Create floor
-								</Link>
-							</Button>
+							{nextFloor
+								? (
+										<Button asChild>
+											<Link to="/builder" search={{ buildingId: selectedBuilding.id, floor: nextFloor, mode: "new" }}>
+												<Plus className="size-4" />
+												Create floor
+											</Link>
+										</Button>
+									)
+								: (
+										<Button disabled>
+											<Plus className="size-4" />
+											Create floor
+										</Button>
+									)}
 						</div>
 					)}
 				</DialogContent>

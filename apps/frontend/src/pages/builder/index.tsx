@@ -732,7 +732,8 @@ function canResizeFloorWithoutCroppingRooms(layout: FloorLayout, cols: number, r
 export default function BuilderPage() {
 	const apiBaseUrl = import.meta.env.VITE_API_URL;
 	const navigate = useNavigate();
-	const { buildingId = "" } = useSearch({ from: "/_home/builder" });
+	const { buildingId = "", floor: requestedFloor, mode } = useSearch({ from: "/_home/builder" });
+	const isNewFloor = mode === "new";
 	const currentFloorPlan = useCurrentFloorPlan({ apiBaseUrl, buildingId });
 	const buildings = useMyBuildings({ apiBaseUrl });
 	const saveFloorPlan = useSaveCurrentFloorPlan({ apiBaseUrl, buildingId });
@@ -805,6 +806,17 @@ export default function BuilderPage() {
 	}, [getCanvasViewport]);
 
 	useEffect(() => {
+		if (isNewFloor) {
+			const nextFloor = Math.min(maxFloorNumber, Math.max(1, requestedFloor ?? 1));
+
+			setLayout(DEFAULT_LAYOUT);
+			setFloorPlanName("Floor");
+			setFloorNumber(nextFloor);
+			fitView(DEFAULT_LAYOUT);
+			hasCenteredInitialViewRef.current = true;
+			return;
+		}
+
 		if (currentFloorPlan.data?.structure) {
 			setLayout(currentFloorPlan.data.structure);
 			setFloorPlanName(currentFloorPlan.data.name);
@@ -812,7 +824,7 @@ export default function BuilderPage() {
 			fitView(currentFloorPlan.data.structure);
 			hasCenteredInitialViewRef.current = true;
 		}
-	}, [currentFloorPlan.data, fitView]);
+	}, [currentFloorPlan.data, fitView, isNewFloor, maxFloorNumber, requestedFloor]);
 
 	useEffect(() => {
 		if (selectedBuilding)

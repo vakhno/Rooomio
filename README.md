@@ -30,6 +30,8 @@ After the Docker stack is running, seed from another terminal:
 docker compose exec backend-dev npm run seed
 ```
 
+Use this Docker command for the normal setup. Plain `npm run seed` runs on the host machine and requires host-local database env values.
+
 Seeded users:
 
 | Name | Email | Password |
@@ -37,7 +39,7 @@ Seeded users:
 | Shelby | `shelby@roomio.test` | `Roomio2026!` |
 | Sparrow | `sparrow@roomio.test` | `Roomio2026!` |
 
-Seeded rooms include `Aquarium`, `Mars`, `Gagarin`, `Luna`, `Orion`, and `Apollo`. The seed is idempotent for fixed users, rooms, and demo bookings. Reservation state currently lives in the backend socket process, so rerun the seed after restarting the backend if demo bookings disappear.
+Seeded rooms include `Aquarium`, `Mars`, `Sol`, `Luna`, and `Orion`, each with walls and one glass door. The seed is idempotent for fixed users, rooms, and demo bookings. Reservation state currently lives in the backend socket process, so rerun the seed after restarting the backend if demo bookings disappear.
 
 ## Local Npm Commands
 

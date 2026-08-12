@@ -50,11 +50,13 @@ initSocketEvents(io, {
 		return room ? { id: room.id, name: room.name, schedule: room.schedule } : null;
 	},
 	getUserId: (socket) => {
-		const token = socket.handshake.headers.cookie
+		const cookieToken = socket.handshake.headers.cookie
 			?.split(";")
 			.map(part => part.trim())
 			.find(part => part.startsWith(`${TOKEN_COOKIE_NAME}=`))
 			?.slice(TOKEN_COOKIE_NAME.length + 1);
+		const authToken = typeof socket.handshake.auth.token === "string" ? socket.handshake.auth.token : null;
+		const token = cookieToken ?? authToken;
 
 		return token ? verifyToken(decodeURIComponent(token))?.id ?? null : null;
 	},
