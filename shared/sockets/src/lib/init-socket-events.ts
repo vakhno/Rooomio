@@ -4,6 +4,7 @@ import type {
 	ReservationAck,
 	ReservationCommitPayload,
 	ReservationDeletePayload,
+	ReservationEndingSoonPayload,
 	ReservationHoldPayload,
 	ReservationRoomPayload,
 	RoomReservationHold,
@@ -11,6 +12,7 @@ import type {
 } from "../contracts";
 import type { Socket } from "socket.io";
 
+import { findNextOccupiedSlot, notifyBeforeMinutes } from "../reservation-notifications";
 import { reservationRangesOverlap, validateReservationInput } from "../reservation-rules";
 
 type SocketEventsOptions = {
@@ -20,8 +22,10 @@ type SocketEventsOptions = {
 const HOLD_TTL_MS = 45_000;
 const holds = new Map<string, RoomReservationHold>();
 const reservations = new Map<string, RoomReservationWire>();
+const notificationTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 const roomChannel = (roomId: string) => `room-reservations:${roomId}`;
+const userChannel = (ownerId: string) => `reservation-owner:${ownerId}`;
 const now = () => Date.now();
 const roomReservations = (roomId: string) => [...reservations.values()].filter(item => item.roomId === roomId);
 const roomHolds = (roomId: string) => [...holds.values()].filter(item => item.roomId === roomId && item.expiresAt > now());
@@ -56,6 +60,57 @@ function deleteHold(io: Server, holdId: string) {
 	io.to(roomChannel(hold.roomId)).emit("reservation:hold:clear", { holdId });
 }
 
+function clearNotification(reservationId: string) {
+	const timer = notificationTimers.get(reservationId);
+
+	if (timer)
+		clearTimeout(timer);
+
+	notificationTimers.delete(reservationId);
+}
+
+function scheduleEndingNotification(io: Server, reservation: RoomReservationWire) {
+	clearNotification(reservation.id);
+
+	const nextReservation = findNextOccupiedSlot(reservation, reservations.values());
+
+	if (!nextReservation)
+		return;
+
+	const minutes = notifyBeforeMinutes();
+	const notifyAt = new Date(reservation.end).getTime() - minutes * 60_000;
+	const reservationEnd = new Date(reservation.end).getTime();
+
+	if (!Number.isFinite(notifyAt) || reservationEnd <= now())
+		return;
+
+	const timer = setTimeout(() => {
+		const current = reservations.get(reservation.id);
+		const next = current ? findNextOccupiedSlot(current, reservations.values()) : null;
+
+		notificationTimers.delete(reservation.id);
+
+		if (!current || !next)
+			return;
+
+		const payload: ReservationEndingSoonPayload = {
+			nextReservation: next,
+			notifyBeforeMinutes: minutes,
+			reservation: current
+		};
+
+		io.to(userChannel(current.ownerId)).emit("reservation:ending-soon", payload);
+	}, Math.max(0, notifyAt - now()));
+
+	timer.unref?.();
+	notificationTimers.set(reservation.id, timer);
+}
+
+function rescheduleRoomNotifications(io: Server, roomId: string) {
+	for (const reservation of roomReservations(roomId))
+		scheduleEndingNotification(io, reservation);
+}
+
 export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) => {
 	const cleanupTimer = setInterval(() => {
 		for (const hold of holds.values()) {
@@ -68,6 +123,7 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 
 	io.on("connection", (socket) => {
 		const ownerId = options.getUserId?.(socket) ?? socket.id;
+		socket.join(userChannel(ownerId));
 
 		socket.on("reservation:room:join", (payload: ReservationRoomPayload) => {
 			if (!payload.roomId)
@@ -169,6 +225,7 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 
 			reservations.set(reservation.id, reservation);
 			deleteHold(io, hold.id);
+			rescheduleRoomNotifications(io, hold.roomId);
 			io.to(roomChannel(hold.roomId)).emit("reservation:created", reservation);
 			io.emit("reservation:my:changed", reservation.ownerId);
 			reply?.({ ok: true });
@@ -181,6 +238,8 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 				return;
 
 			reservations.delete(payload.id);
+			clearNotification(reservation.id);
+			rescheduleRoomNotifications(io, reservation.roomId);
 			io.to(roomChannel(payload.roomId)).emit("reservation:deleted", payload);
 			io.emit("reservation:my:changed", reservation.ownerId);
 		});

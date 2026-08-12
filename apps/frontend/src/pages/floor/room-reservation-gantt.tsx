@@ -1,5 +1,6 @@
 import type {
 	ReservationAck,
+	ReservationEndingSoonPayload,
 	ReservationStatePayload,
 	RoomReservationHold,
 	RoomReservationWire
@@ -413,6 +414,16 @@ export function RoomReservationGantt({
 
 		socket.on("reservation:deleted", ({ id }: { id: string }) => {
 			onDelete(id);
+		});
+
+		socket.on("reservation:ending-soon", ({ nextReservation, notifyBeforeMinutes, reservation }: ReservationEndingSoonPayload) => {
+			const current = fromWireReservation(reservation);
+			const next = fromWireReservation(nextReservation);
+
+			toast(`${current.roomName} is booked after you`, {
+				description: `${current.title} ends at ${formatTime(current.end)}. ${next.title} starts at ${formatTime(next.start)}.`,
+				duration: Math.max(5_000, notifyBeforeMinutes * 1_000)
+			});
 		});
 
 		socket.on("disconnect", () => {
