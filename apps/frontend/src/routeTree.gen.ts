@@ -14,6 +14,8 @@ import { Route as HomeRouteRouteImport } from './routes/_home/route'
 import { Route as BlankRouteRouteImport } from './routes/_blank/route'
 import { Route as HomeIndexRouteImport } from './routes/_home/index'
 import { Route as PublicProfileRouteImport } from './routes/_public/profile'
+import { Route as HomeReservationsRouteImport } from './routes/_home/reservations'
+import { Route as HomeMyBuildingsRouteImport } from './routes/_home/my-buildings'
 import { Route as HomeFloorRouteImport } from './routes/_home/floor'
 import { Route as HomeBuildingsRouteImport } from './routes/_home/buildings'
 import { Route as HomeBuilderRouteImport } from './routes/_home/builder'
@@ -41,6 +43,16 @@ const PublicProfileRoute = PublicProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => PublicRouteRoute,
 } as any)
+const HomeReservationsRoute = HomeReservationsRouteImport.update({
+  id: '/reservations',
+  path: '/reservations',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
+const HomeMyBuildingsRoute = HomeMyBuildingsRouteImport.update({
+  id: '/my-buildings',
+  path: '/my-buildings',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
 const HomeFloorRoute = HomeFloorRouteImport.update({
   id: '/floor',
   path: '/floor',
@@ -67,6 +79,8 @@ export interface FileRoutesByFullPath {
   '/builder': typeof HomeBuilderRoute
   '/buildings': typeof HomeBuildingsRoute
   '/floor': typeof HomeFloorRoute
+  '/my-buildings': typeof HomeMyBuildingsRoute
+  '/reservations': typeof HomeReservationsRoute
   '/profile': typeof PublicProfileRoute
   '/auth/login': typeof BlankAuthLoginRoute
 }
@@ -75,6 +89,8 @@ export interface FileRoutesByTo {
   '/builder': typeof HomeBuilderRoute
   '/buildings': typeof HomeBuildingsRoute
   '/floor': typeof HomeFloorRoute
+  '/my-buildings': typeof HomeMyBuildingsRoute
+  '/reservations': typeof HomeReservationsRoute
   '/profile': typeof PublicProfileRoute
   '/auth/login': typeof BlankAuthLoginRoute
 }
@@ -86,6 +102,8 @@ export interface FileRoutesById {
   '/_home/builder': typeof HomeBuilderRoute
   '/_home/buildings': typeof HomeBuildingsRoute
   '/_home/floor': typeof HomeFloorRoute
+  '/_home/my-buildings': typeof HomeMyBuildingsRoute
+  '/_home/reservations': typeof HomeReservationsRoute
   '/_public/profile': typeof PublicProfileRoute
   '/_home/': typeof HomeIndexRoute
   '/_blank/auth/login': typeof BlankAuthLoginRoute
@@ -97,10 +115,20 @@ export interface FileRouteTypes {
     | '/builder'
     | '/buildings'
     | '/floor'
+    | '/my-buildings'
+    | '/reservations'
     | '/profile'
     | '/auth/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/builder' | '/buildings' | '/floor' | '/profile' | '/auth/login'
+  to:
+    | '/'
+    | '/builder'
+    | '/buildings'
+    | '/floor'
+    | '/my-buildings'
+    | '/reservations'
+    | '/profile'
+    | '/auth/login'
   id:
     | '__root__'
     | '/_blank'
@@ -109,6 +137,8 @@ export interface FileRouteTypes {
     | '/_home/builder'
     | '/_home/buildings'
     | '/_home/floor'
+    | '/_home/my-buildings'
+    | '/_home/reservations'
     | '/_public/profile'
     | '/_home/'
     | '/_blank/auth/login'
@@ -157,6 +187,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicProfileRouteImport
       parentRoute: typeof PublicRouteRoute
     }
+    '/_home/reservations': {
+      id: '/_home/reservations'
+      path: '/reservations'
+      fullPath: '/reservations'
+      preLoaderRoute: typeof HomeReservationsRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
+    '/_home/my-buildings': {
+      id: '/_home/my-buildings'
+      path: '/my-buildings'
+      fullPath: '/my-buildings'
+      preLoaderRoute: typeof HomeMyBuildingsRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
     '/_home/floor': {
       id: '/_home/floor'
       path: '/floor'
@@ -204,6 +248,8 @@ interface HomeRouteRouteChildren {
   HomeBuilderRoute: typeof HomeBuilderRoute
   HomeBuildingsRoute: typeof HomeBuildingsRoute
   HomeFloorRoute: typeof HomeFloorRoute
+  HomeMyBuildingsRoute: typeof HomeMyBuildingsRoute
+  HomeReservationsRoute: typeof HomeReservationsRoute
   HomeIndexRoute: typeof HomeIndexRoute
 }
 
@@ -211,6 +257,8 @@ const HomeRouteRouteChildren: HomeRouteRouteChildren = {
   HomeBuilderRoute: HomeBuilderRoute,
   HomeBuildingsRoute: HomeBuildingsRoute,
   HomeFloorRoute: HomeFloorRoute,
+  HomeMyBuildingsRoute: HomeMyBuildingsRoute,
+  HomeReservationsRoute: HomeReservationsRoute,
   HomeIndexRoute: HomeIndexRoute,
 }
 

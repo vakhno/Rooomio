@@ -10,7 +10,7 @@ import { Separator } from "@shared/design-system/separator";
 import { Skeleton } from "@shared/design-system/skeleton";
 import { useGetSession, useLogout } from "@shared/queries";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, CalendarDays, LogOut, Menu, Moon, Sun, User } from "lucide-react";
+import { ArrowUpRight, Building2, CalendarDays, LogOut, Menu, Moon, Sun, User } from "lucide-react";
 import { useState } from "react";
 
 import { useTheme } from "@/hooks/use-theme";
@@ -135,6 +135,24 @@ const Header = ({ className = "" }: HeaderProps) => {
 												<Separator className="h-0.5" />
 												<div className="grid gap-3">
 													<Button variant="secondary" className="w-full justify-between gap-2" asChild>
+														<Link to="/reservations" onClick={() => setIsProfileDialogOpen(false)}>
+															<span className="inline-flex items-center gap-2">
+																<CalendarDays className="h-4 w-4" />
+																My reservations
+															</span>
+															<ArrowUpRight className="h-4 w-4" />
+														</Link>
+													</Button>
+													<Button variant="secondary" className="w-full justify-between gap-2" asChild>
+														<Link to="/my-buildings" onClick={() => setIsProfileDialogOpen(false)}>
+															<span className="inline-flex items-center gap-2">
+																<Building2 className="h-4 w-4" />
+																My buildings
+															</span>
+															<ArrowUpRight className="h-4 w-4" />
+														</Link>
+													</Button>
+													<Button variant="secondary" className="w-full justify-between gap-2" asChild>
 														<Link to="/profile" onClick={() => setIsProfileDialogOpen(false)}>
 															<span className="inline-flex items-center gap-2">
 																<User className="h-4 w-4" />
@@ -188,7 +206,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 								onClick={() => setIsMenuDialogOpen(false)}
 							>
 								<Link to="/" className="flex w-full items-center">
-									Booking overview
+									Home
 									<ArrowUpRight className="h-4 w-4" />
 								</Link>
 							</Button>
@@ -199,8 +217,8 @@ const Header = ({ className = "" }: HeaderProps) => {
 									asChild
 									onClick={() => setIsMenuDialogOpen(false)}
 								>
-									<Link to="/profile" className="flex w-full items-center">
-										Profile
+									<Link to="/buildings" className="flex w-full items-center">
+										Buildings
 										<ArrowUpRight className="h-4 w-4" />
 									</Link>
 								</Button>

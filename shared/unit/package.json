@@ -7,6 +7,9 @@
 	"scripts": {
 		"test": "vitest run --config vitest.config.ts"
 	},
+	"dependencies": {
+		"@shared/sockets": "file:../sockets"
+	},
 	"devDependencies": {
 		"vitest": "^3.2.4"
 	}
