@@ -15,9 +15,20 @@ export const Route = createFileRoute("/_home/floor")({
 			{ rel: "icon", type: "image/svg+xml", href: "/icon/logo.svg" }
 		]
 	}),
-	validateSearch: (search: Record<string, unknown>) => ({
-		floorId: typeof search.floorId === "string" ? search.floorId : undefined
-	})
+	validateSearch: (search: Record<string, unknown>) => {
+		const result: { floorId?: string; roomId?: string; weekStart?: string } = {};
+
+		if (typeof search.floorId === "string")
+			result.floorId = search.floorId;
+
+		if (typeof search.roomId === "string")
+			result.roomId = search.roomId;
+
+		if (typeof search.weekStart === "string")
+			result.weekStart = search.weekStart;
+
+		return result;
+	}
 });
 
 function Floor() {

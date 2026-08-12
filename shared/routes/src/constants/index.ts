@@ -29,7 +29,9 @@ export const ROUTES = {
     BUILDER: {path: '/builder'},
     FLOOR: {path: '/floor'},
     LOGIN: {path: '/auth/login'},
+    MY_BUILDINGS: {path: '/my-buildings'},
     PROFILE: {path: '/profile'},
+    RESERVATIONS: {path: '/reservations'},
 };
 
 export const BLOCKED_DURING_AUTH_LIST = [
@@ -40,7 +42,9 @@ export const AUTH_REQUIRED_PAGES_LIST = [
     ROUTES.BUILDINGS.path,
     ROUTES.BUILDER.path,
     ROUTES.FLOOR.path,
+    ROUTES.MY_BUILDINGS.path,
     ROUTES.PROFILE.path,
+    ROUTES.RESERVATIONS.path,
 ] as const;
 
 export const ADMIN_REQUIRED_PAGES_LIST = [] as const;

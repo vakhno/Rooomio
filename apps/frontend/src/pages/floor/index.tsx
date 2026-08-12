@@ -3,8 +3,15 @@ import type { PointerEvent } from "react";
 
 import { Badge } from "@shared/design-system/badge";
 import { Button } from "@shared/design-system/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle
+} from "@shared/design-system/dialog";
 import { Skeleton } from "@shared/design-system/skeleton";
-import { useFloorPlan } from "@shared/queries";
+import { useFloorPlan, useGetSession } from "@shared/queries";
 import { useSearch } from "@tanstack/react-router";
 import { CircleDot, Grid2X2, Layers3, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,6 +19,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import floorLightCarpetSrc from "@/assets/builder/floor-light-carpet.png";
 import floorWhiteTileSrc from "@/assets/builder/floor-white-tile.png";
 import floorWoodParquetSrc from "@/assets/builder/floor-wood-parquet.png";
+
+import { type RoomReservation, RoomReservationGantt } from "./room-reservation-gantt";
 
 type Cell = [number, number];
 type Point = { x: number; y: number };
@@ -216,21 +225,47 @@ function drawFloorCanvas({
 	}
 }
 
-function ReadOnlyFloorCanvas({ layout, name }: { layout: FloorLayout; name: string }) {
+function ReadOnlyFloorCanvas({
+	currentUserId,
+	floorId,
+	initialReservationRoomId,
+	initialWeekStart,
+	layout,
+	name
+}: {
+	currentUserId: string;
+	floorId: string;
+	initialReservationRoomId?: string;
+	initialWeekStart?: string;
+	layout: FloorLayout;
+	name: string;
+}) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [zoom, setZoom] = useState(() => getFitZoom(layout));
 	const [camera, setCamera] = useState(() => getCenteredCamera(layout, getFitZoom(layout)));
 	const [showGrid, setShowGrid] = useState(true);
 	const [hoverCell, setHoverCell] = useState<Cell | null>(null);
 	const [selectedRoomId, setSelectedRoomId] = useState<string | null>(layout.rooms?.[0]?.id ?? null);
+	const [reservationRoomId, setReservationRoomId] = useState<string | null>(initialReservationRoomId ?? null);
+	const [reservations, setReservations] = useState<RoomReservation[]>([]);
 	const [panStart, setPanStart] = useState<{ camera: Point; x: number; y: number } | null>(null);
 	const [images, setImages] = useState<BuilderImages>({});
 	const rooms = layout.rooms ?? [];
 	const selectedRoom = rooms.find(room => room.id === selectedRoomId) ?? rooms[0] ?? null;
+	const reservationRoom = rooms.find(room => room.id === reservationRoomId) ?? null;
 	const hoveredRoom = hoverCell ? getRoomAtCell(layout, hoverCell) : null;
 	const floorKeys = useMemo(() => new Set(layout.floor.map(([col, row]) => cellKey(col, row))), [layout.floor]);
 	const floorMaterials = useMemo(() => new Map((layout.floorMaterials ?? []).map(item => [cellKey(item.col, item.row), item.material])), [layout.floorMaterials]);
 	const cursorClass = panStart ? "cursor-grabbing" : hoveredRoom ? "cursor-pointer" : "cursor-grab";
+	const createReservation = useCallback((reservation: RoomReservation) => {
+		setReservations(current => [
+			...current.filter(item => item.id !== reservation.id),
+			reservation
+		]);
+	}, []);
+	const deleteReservation = useCallback((id: string) => {
+		setReservations(current => current.filter(reservation => reservation.id !== id));
+	}, []);
 
 	const getCanvasViewport = useCallback(() => {
 		const rect = canvasRef.current?.getBoundingClientRect();
@@ -340,6 +375,7 @@ function ReadOnlyFloorCanvas({ layout, name }: { layout: FloorLayout; name: stri
 
 		if (room) {
 			setSelectedRoomId(room.id);
+			setReservationRoomId(room.id);
 			return;
 		}
 
@@ -365,78 +401,103 @@ function ReadOnlyFloorCanvas({ layout, name }: { layout: FloorLayout; name: stri
 	};
 
 	return (
-		<div className="h-[calc(100svh-var(--header-height)-var(--header-margin-bottom)-1.5rem)] min-h-[420px] w-full px-2 pb-2">
-			<div className="relative h-full overflow-hidden overscroll-contain rounded-[3px] border-2 border-border bg-shade-1 [box-shadow:4px_4px_0_var(--border)]">
-				<canvas
-					ref={canvasRef}
-					role="application"
-					aria-label="Floor plan"
-					className={`block size-full touch-none overscroll-contain ${cursorClass}`}
-					onPointerDown={handlePointerDown}
-					onPointerMove={handlePointerMove}
-					onPointerUp={handlePointerUp}
-					onPointerCancel={() => setPanStart(null)}
-					onPointerLeave={() => {
-						setHoverCell(null);
-						setPanStart(null);
-					}}
-				/>
+		<>
+			<Dialog open={Boolean(reservationRoom)} onOpenChange={open => !open && setReservationRoomId(null)}>
+				<DialogContent className="h-[calc(100svh-2rem)] w-[calc(100vw-2rem)] min-w-0 overflow-hidden sm:max-w-[calc(100vw-2rem)]">
+					<DialogHeader>
+						<DialogTitle>Room reservation</DialogTitle>
+						<DialogDescription>
+							Choose a free time range for the selected office room.
+						</DialogDescription>
+					</DialogHeader>
+					{reservationRoom && (
+						<RoomReservationGantt
+							room={reservationRoom}
+							currentUserId={currentUserId}
+							floorId={floorId}
+							initialDate={initialWeekStart ? new Date(initialWeekStart) : undefined}
+							reservations={reservations.filter(reservation => reservation.roomId === reservationRoom.id)}
+							onCreate={createReservation}
+							onDelete={deleteReservation}
+						/>
+					)}
+				</DialogContent>
+			</Dialog>
 
-				<div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start justify-between gap-3">
-					<div className="pointer-events-auto rounded-[3px] border-2 border-border bg-card p-3 [box-shadow:3px_3px_0_var(--border)]">
-						<div className="flex items-center gap-2">
-							<Layers3 className="size-5" />
-							<p className="text-sm font-extrabold text-foreground">{name}</p>
-							<Badge>
-								{rooms.length}
-								{" "}
-								rooms
-							</Badge>
-						</div>
-					</div>
+			<div className="h-[calc(100svh-var(--header-height)-var(--header-margin-bottom)-1.5rem)] min-h-[420px] w-full px-2 pb-2">
+				<div className="relative h-full overflow-hidden overscroll-contain rounded-[3px] border-2 border-border bg-shade-1 [box-shadow:4px_4px_0_var(--border)]">
+					<canvas
+						ref={canvasRef}
+						role="application"
+						aria-label="Floor plan"
+						className={`block size-full touch-none overscroll-contain ${cursorClass}`}
+						onPointerDown={handlePointerDown}
+						onPointerMove={handlePointerMove}
+						onPointerUp={handlePointerUp}
+						onPointerCancel={() => setPanStart(null)}
+						onPointerLeave={() => {
+							setHoverCell(null);
+							setPanStart(null);
+						}}
+					/>
 
-					{selectedRoom && (
-						<div className="pointer-events-auto min-w-64 rounded-[3px] border-2 border-border bg-card p-3 [box-shadow:3px_3px_0_var(--border)]">
-							<div className="flex items-start justify-between gap-3">
-								<div>
-									<p className="text-sm font-extrabold text-foreground">{selectedRoom.name}</p>
-									<p className="text-xs font-semibold text-muted-foreground">{selectedRoom.floor}</p>
-								</div>
+					<div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start justify-between gap-3">
+						<div className="pointer-events-auto rounded-[3px] border-2 border-border bg-card p-3 [box-shadow:3px_3px_0_var(--border)]">
+							<div className="flex items-center gap-2">
+								<Layers3 className="size-5" />
+								<p className="text-sm font-extrabold text-foreground">{name}</p>
 								<Badge>
-									{selectedRoom.capacity}
+									{rooms.length}
 									{" "}
-									places
+									rooms
 								</Badge>
 							</div>
 						</div>
-					)}
-				</div>
 
-				<div className="pointer-events-auto absolute right-3 bottom-3 z-10 flex flex-col gap-2 rounded-[3px] border-2 border-border bg-card p-2 [box-shadow:3px_3px_0_var(--border)]">
-					<Button variant="outline" size="icon-sm" onClick={() => setShowGrid(current => !current)} aria-label="Toggle grid">
-						<Grid2X2 className="size-4" />
-					</Button>
-					<Button variant="outline" size="icon-sm" onClick={fitView} aria-label="Reset view">
-						<CircleDot className="size-4" />
-					</Button>
-					<div className="flex flex-col gap-1">
-						<Button variant="outline" size="icon-sm" onClick={() => setZoom(current => Math.min(MAX_ZOOM, current + 0.1))} aria-label="Zoom in">
-							<Plus className="size-4" />
+						{selectedRoom && (
+							<div className="pointer-events-auto min-w-64 rounded-[3px] border-2 border-border bg-card p-3 [box-shadow:3px_3px_0_var(--border)]">
+								<div className="flex items-start justify-between gap-3">
+									<div>
+										<p className="text-sm font-extrabold text-foreground">{selectedRoom.name}</p>
+										<p className="text-xs font-semibold text-muted-foreground">{selectedRoom.floor}</p>
+									</div>
+									<Badge>
+										{selectedRoom.capacity}
+										{" "}
+										places
+									</Badge>
+								</div>
+							</div>
+						)}
+					</div>
+
+					<div className="pointer-events-auto absolute right-3 bottom-3 z-10 flex flex-col gap-2 rounded-[3px] border-2 border-border bg-card p-2 [box-shadow:3px_3px_0_var(--border)]">
+						<Button variant="outline" size="icon-sm" onClick={() => setShowGrid(current => !current)} aria-label="Toggle grid">
+							<Grid2X2 className="size-4" />
 						</Button>
-						<Button variant="outline" size="icon-sm" onClick={() => setZoom(current => Math.max(MIN_ZOOM, current - 0.1))} aria-label="Zoom out">
-							<Minus className="size-4" />
+						<Button variant="outline" size="icon-sm" onClick={fitView} aria-label="Reset view">
+							<CircleDot className="size-4" />
 						</Button>
+						<div className="flex flex-col gap-1">
+							<Button variant="outline" size="icon-sm" onClick={() => setZoom(current => Math.min(MAX_ZOOM, current + 0.1))} aria-label="Zoom in">
+								<Plus className="size-4" />
+							</Button>
+							<Button variant="outline" size="icon-sm" onClick={() => setZoom(current => Math.max(MIN_ZOOM, current - 0.1))} aria-label="Zoom out">
+								<Minus className="size-4" />
+							</Button>
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }
 
 export default function FloorPage() {
 	const apiBaseUrl = import.meta.env.VITE_API_URL;
-	const { floorId = "" } = useSearch({ from: "/_home/floor" });
+	const { floorId = "", roomId, weekStart } = useSearch({ from: "/_home/floor" });
 	const floorPlan = useFloorPlan({ apiBaseUrl, floorId });
+	const { data: session } = useGetSession({ apiBaseUrl });
 	const floor = floorPlan.data;
 
 	if (floorPlan.isLoading)
@@ -453,5 +514,14 @@ export default function FloorPage() {
 		);
 	}
 
-	return <ReadOnlyFloorCanvas layout={floor.structure} name={floor.name} />;
+	return (
+		<ReadOnlyFloorCanvas
+			currentUserId={session?.user.id ?? ""}
+			floorId={floorId}
+			initialReservationRoomId={roomId}
+			initialWeekStart={weekStart}
+			layout={floor.structure}
+			name={floor.name}
+		/>
+	);
 }
