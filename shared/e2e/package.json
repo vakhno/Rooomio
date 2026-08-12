@@ -15,7 +15,7 @@
 		"lint:fix": "tsc --noEmit",
 		"test": "playwright test",
 		"test-server": "tsx src/server/test-server.ts",
-		"playwright:install": "playwright install chromium --with-deps"
+		"playwright:install": "playwright install-deps chromium"
 	},
 	"dependencies": {
 		"@shared/routes": "file:../routes",
