@@ -10,6 +10,7 @@ import {
 	DialogHeader,
 	DialogTitle
 } from "@shared/design-system/dialog";
+import { Input } from "@shared/design-system/input";
 import { Skeleton } from "@shared/design-system/skeleton";
 import { useFloorPlan, useGetSession } from "@shared/queries";
 import { useSearch } from "@tanstack/react-router";
@@ -84,7 +85,7 @@ const getCenteredCamera = (layout: FloorLayout, zoom: number, viewport: Viewport
 		y: viewport.height / 2 - (bounds.minY + bounds.maxY) / 2
 	};
 };
-const getRoomAtCell = (layout: FloorLayout, cell: Cell) => (layout.rooms ?? []).find(room =>
+const getMatchingRoomAtCell = (rooms: FloorRoom[], cell: Cell) => rooms.find(room =>
 	cell[0] >= room.bounds.minCol
 	&& cell[0] <= room.bounds.maxCol
 	&& cell[1] >= room.bounds.minRow
@@ -138,7 +139,7 @@ function drawFloorCanvas({
 	hoverCell,
 	images,
 	layout,
-	selectedRoom,
+	selectableRooms,
 	showGrid,
 	zoom
 }: {
@@ -149,7 +150,7 @@ function drawFloorCanvas({
 	hoverCell: Cell | null;
 	images: BuilderImages;
 	layout: FloorLayout;
-	selectedRoom: FloorRoom | null;
+	selectableRooms: FloorRoom[];
 	showGrid: boolean;
 	zoom: number;
 }) {
@@ -215,9 +216,9 @@ function drawFloorCanvas({
 			drawWallLabel(ctx, point.x, point.y, cellW, cellH, "W", palette);
 	}
 
-	if (selectedRoom) {
-		const topLeft = gridToScreen(selectedRoom.bounds.minCol, selectedRoom.bounds.minRow, camera.x, camera.y, zoom);
-		const bottomRight = gridToScreen(selectedRoom.bounds.maxCol + 1, selectedRoom.bounds.maxRow + 1, camera.x, camera.y, zoom);
+	for (const room of selectableRooms) {
+		const topLeft = gridToScreen(room.bounds.minCol, room.bounds.minRow, camera.x, camera.y, zoom);
+		const bottomRight = gridToScreen(room.bounds.maxCol + 1, room.bounds.maxRow + 1, camera.x, camera.y, zoom);
 
 		ctx.strokeStyle = palette.selected;
 		ctx.lineWidth = 4;
@@ -245,15 +246,22 @@ function ReadOnlyFloorCanvas({
 	const [camera, setCamera] = useState(() => getCenteredCamera(layout, getFitZoom(layout)));
 	const [showGrid, setShowGrid] = useState(true);
 	const [hoverCell, setHoverCell] = useState<Cell | null>(null);
-	const [selectedRoomId, setSelectedRoomId] = useState<string | null>(layout.rooms?.[0]?.id ?? null);
+	const [selectedRoomId, setSelectedRoomId] = useState<string | null>(initialReservationRoomId ?? null);
 	const [reservationRoomId, setReservationRoomId] = useState<string | null>(initialReservationRoomId ?? null);
+	const [minimumCapacity, setMinimumCapacity] = useState("");
 	const [reservations, setReservations] = useState<RoomReservation[]>([]);
 	const [panStart, setPanStart] = useState<{ camera: Point; x: number; y: number } | null>(null);
 	const [images, setImages] = useState<BuilderImages>({});
-	const rooms = layout.rooms ?? [];
-	const selectedRoom = rooms.find(room => room.id === selectedRoomId) ?? rooms[0] ?? null;
+	const rooms = useMemo(() => layout.rooms ?? [], [layout.rooms]);
+	const parsedMinimumCapacity = Number.parseInt(minimumCapacity, 10);
+	const capacityFilter = Number.isFinite(parsedMinimumCapacity) && parsedMinimumCapacity > 0 ? parsedMinimumCapacity : 0;
+	const filteredRooms = useMemo(
+		() => capacityFilter > 0 ? rooms.filter(room => room.capacity >= capacityFilter) : rooms,
+		[capacityFilter, rooms]
+	);
+	const selectedRoom = filteredRooms.find(room => room.id === selectedRoomId) ?? null;
 	const reservationRoom = rooms.find(room => room.id === reservationRoomId) ?? null;
-	const hoveredRoom = hoverCell ? getRoomAtCell(layout, hoverCell) : null;
+	const hoveredRoom = hoverCell ? getMatchingRoomAtCell(filteredRooms, hoverCell) : null;
 	const floorKeys = useMemo(() => new Set(layout.floor.map(([col, row]) => cellKey(col, row))), [layout.floor]);
 	const floorMaterials = useMemo(() => new Map((layout.floorMaterials ?? []).map(item => [cellKey(item.col, item.row), item.material])), [layout.floorMaterials]);
 	const cursorClass = panStart ? "cursor-grabbing" : hoveredRoom ? "cursor-pointer" : "cursor-grab";
@@ -293,11 +301,11 @@ function ReadOnlyFloorCanvas({
 			hoverCell,
 			images,
 			layout,
-			selectedRoom,
+			selectableRooms: filteredRooms,
 			showGrid,
 			zoom
 		});
-	}, [camera, floorKeys, floorMaterials, hoverCell, images, layout, selectedRoom, showGrid, zoom]);
+	}, [camera, filteredRooms, floorKeys, floorMaterials, hoverCell, images, layout, showGrid, zoom]);
 
 	const getCellFromEvent = (event: PointerEvent<HTMLCanvasElement>) => {
 		const rect = event.currentTarget.getBoundingClientRect();
@@ -371,7 +379,7 @@ function ReadOnlyFloorCanvas({
 	const handlePointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
 		event.currentTarget.setPointerCapture(event.pointerId);
 		const cell = getCellFromEvent(event);
-		const room = cell ? getRoomAtCell(layout, cell) : null;
+		const room = cell ? getMatchingRoomAtCell(filteredRooms, cell) : null;
 
 		if (room) {
 			setSelectedRoomId(room.id);
@@ -383,7 +391,9 @@ function ReadOnlyFloorCanvas({
 	};
 
 	const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
-		setHoverCell(getCellFromEvent(event));
+		const cell = getCellFromEvent(event);
+
+		setHoverCell(cell && getMatchingRoomAtCell(filteredRooms, cell) ? cell : null);
 
 		if (panStart) {
 			setCamera({
@@ -443,15 +453,38 @@ function ReadOnlyFloorCanvas({
 
 					<div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start justify-between gap-3">
 						<div className="pointer-events-auto rounded-[3px] border-2 border-border bg-card p-3 [box-shadow:3px_3px_0_var(--border)]">
-							<div className="flex items-center gap-2">
+							<div className="flex flex-wrap items-center gap-2">
 								<Layers3 className="size-5" />
 								<p className="text-sm font-extrabold text-foreground">{name}</p>
 								<Badge>
+									{filteredRooms.length}
+									{" "}
+									/
+									{" "}
 									{rooms.length}
 									{" "}
 									rooms
 								</Badge>
 							</div>
+							<label className="mt-3 block space-y-1 text-xs font-extrabold text-foreground">
+								<span>Minimum capacity</span>
+								<div className="flex items-center gap-2">
+									<Input
+										className="h-9 w-24"
+										inputMode="numeric"
+										min={1}
+										type="number"
+										value={minimumCapacity}
+										onChange={event => setMinimumCapacity(event.currentTarget.value)}
+										placeholder="Any"
+									/>
+									{minimumCapacity && (
+										<Button type="button" variant="outline" size="sm" onClick={() => setMinimumCapacity("")}>
+											Clear
+										</Button>
+									)}
+								</div>
+							</label>
 						</div>
 
 						{selectedRoom && (
@@ -467,6 +500,13 @@ function ReadOnlyFloorCanvas({
 										places
 									</Badge>
 								</div>
+							</div>
+						)}
+
+						{rooms.length > 0 && filteredRooms.length === 0 && (
+							<div className="pointer-events-auto max-w-xs rounded-[3px] border-2 border-border bg-card p-3 [box-shadow:3px_3px_0_var(--border)]">
+								<p className="text-sm font-extrabold text-foreground">No rooms match</p>
+								<p className="text-xs font-semibold text-muted-foreground">Lower the minimum capacity or clear the filter.</p>
 							</div>
 						)}
 					</div>
