@@ -2,20 +2,31 @@ import type { Server } from "socket.io";
 
 import type {
 	ReservationAck,
-	ReservationCommitPayload,
 	ReservationDeletePayload,
 	ReservationEndingSoonPayload,
-	ReservationHoldPayload,
-	ReservationRoomPayload,
 	RoomReservationHold,
 	RoomReservationWire
 } from "../contracts";
+import type { ReservationScheduleDay } from "../reservation-rules";
 import type { Socket } from "socket.io";
 
 import { findNextOccupiedSlot, notifyBeforeMinutes } from "../reservation-notifications";
-import { reservationRangesOverlap, validateReservationInput } from "../reservation-rules";
+import {
+	ReservationCommitPayloadSchema,
+	ReservationDeletePayloadSchema,
+	ReservationHoldPayloadSchema,
+	ReservationRoomPayloadSchema
+} from "../reservation-schemas";
+import { reservationRangesOverlap, validateReservationInput, validateReservationOfficeHours } from "../reservation-rules";
+
+type ReservableRoom = {
+	id: string;
+	name: string;
+	schedule: ReservationScheduleDay[];
+};
 
 type SocketEventsOptions = {
+	getRoom?: (input: { floorId: string; roomId: string }) => Promise<ReservableRoom | null> | ReservableRoom | null;
 	getUserId?: (socket: Socket) => string | null;
 };
 
@@ -49,6 +60,12 @@ const hasReservationOverlap = (roomId: string, start: string, end: string) =>
 
 const hasHoldOverlap = (roomId: string, start: string, end: string, holdId: string) =>
 	roomHolds(roomId).some(item => item.id !== holdId && overlaps(start, end, item.start, item.end));
+
+const validateBooking = (
+	input: { end: string; room?: ReservableRoom | null; start: string; title: string }
+) =>
+	validateReservationInput(input)
+	?? (input.room ? validateReservationOfficeHours({ end: input.end, schedule: input.room.schedule, start: input.start }) : null);
 
 function deleteHold(io: Server, holdId: string) {
 	const hold = holds.get(holdId);
@@ -122,17 +139,25 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 	cleanupTimer.unref?.();
 
 	io.on("connection", (socket) => {
-		const ownerId = options.getUserId?.(socket) ?? socket.id;
+		const ownerId = options.getUserId ? options.getUserId(socket) : socket.id;
+
+		if (!ownerId) {
+			socket.disconnect(true);
+			return;
+		}
+
 		socket.join(userChannel(ownerId));
 
-		socket.on("reservation:room:join", (payload: ReservationRoomPayload) => {
-			if (!payload.roomId)
+		socket.on("reservation:room:join", (payload) => {
+			const parsedPayload = ReservationRoomPayloadSchema.safeParse(payload);
+
+			if (!parsedPayload.success)
 				return;
 
-			socket.join(roomChannel(payload.roomId));
+			socket.join(roomChannel(parsedPayload.data.roomId));
 			socket.emit("reservation:state", {
-				holds: roomHolds(payload.roomId),
-				reservations: roomReservations(payload.roomId)
+				holds: roomHolds(parsedPayload.data.roomId),
+				reservations: roomReservations(parsedPayload.data.roomId)
 			});
 		});
 
@@ -140,15 +165,26 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 			socket.emit("reservation:my:state", [...reservations.values()].filter(item => item.ownerId === ownerId));
 		});
 
-		socket.on("reservation:hold:upsert", (payload: ReservationHoldPayload, reply?: (ack: ReservationAck) => void) => {
-			if (!payload.holdId || !payload.roomId || !payload.floorId || !payload.roomName) {
+		socket.on("reservation:hold:upsert", async (payload, reply?: (ack: ReservationAck) => void) => {
+			const parsedPayload = ReservationHoldPayloadSchema.safeParse(payload);
+
+			if (!parsedPayload.success) {
 				reply?.({ error: "Room data is missing.", ok: false });
 				return;
 			}
 
-			const validationError = validateReservationInput({
-				end: payload.end,
-				start: payload.start,
+			const input = parsedPayload.data;
+			const room = options.getRoom ? await options.getRoom({ floorId: input.floorId, roomId: input.roomId }) : null;
+
+			if (options.getRoom && !room) {
+				reply?.({ error: "Room is not available for booking.", ok: false });
+				return;
+			}
+
+			const validationError = validateBooking({
+				room,
+				end: input.end,
+				start: input.start,
 				title: "hold"
 			});
 
@@ -158,27 +194,27 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 			}
 
 			if (
-				hasReservationOverlap(payload.roomId, payload.start, payload.end)
-				|| hasHoldOverlap(payload.roomId, payload.start, payload.end, payload.holdId)
+				hasReservationOverlap(input.roomId, input.start, input.end)
+				|| hasHoldOverlap(input.roomId, input.start, input.end, input.holdId)
 			) {
-				deleteHold(io, payload.holdId);
+				deleteHold(io, input.holdId);
 				reply?.({ error: "This time range is already selected or reserved.", ok: false });
 				return;
 			}
 
 			const hold: RoomReservationHold = {
-				end: payload.end,
+				end: input.end,
 				expiresAt: now() + HOLD_TTL_MS,
-				floorId: payload.floorId,
-				id: payload.holdId,
+				floorId: input.floorId,
+				id: input.holdId,
 				ownerId,
-				roomId: payload.roomId,
-				roomName: payload.roomName,
-				start: payload.start
+				roomId: input.roomId,
+				roomName: room?.name ?? input.roomName,
+				start: input.start
 			};
 
-			holds.set(payload.holdId, hold);
-			io.to(roomChannel(payload.roomId)).emit("reservation:hold:upsert", hold);
+			holds.set(input.holdId, hold);
+			io.to(roomChannel(input.roomId)).emit("reservation:hold:upsert", hold);
 			reply?.({ ok: true });
 		});
 
@@ -189,16 +225,36 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 				deleteHold(io, payload.holdId);
 		});
 
-		socket.on("reservation:commit", (payload: ReservationCommitPayload, reply?: (ack: ReservationAck) => void) => {
-			const hold = holds.get(payload.holdId);
-			const title = payload.title.trim();
+		socket.on("reservation:commit", async (payload, reply?: (ack: ReservationAck) => void) => {
+			const parsedPayload = ReservationCommitPayloadSchema.safeParse(payload);
+
+			if (!parsedPayload.success) {
+				reply?.({ error: "Title must be 1 to 100 characters.", ok: false });
+				return;
+			}
+
+			const hold = holds.get(parsedPayload.data.holdId);
+			const title = parsedPayload.data.title.trim();
 
 			if (!hold || hold.ownerId !== ownerId) {
 				reply?.({ error: "Reservation hold is no longer available.", ok: false });
 				return;
 			}
 
-			const validationError = validateReservationInput({ end: hold.end, start: hold.start, title });
+			const room = options.getRoom ? await options.getRoom({ floorId: hold.floorId, roomId: hold.roomId }) : null;
+
+			if (options.getRoom && !room) {
+				deleteHold(io, hold.id);
+				reply?.({ error: "Room is not available for booking.", ok: false });
+				return;
+			}
+
+			const validationError = validateBooking({
+				room,
+				end: hold.end,
+				start: hold.start,
+				title
+			});
 
 			if (validationError) {
 				deleteHold(io, hold.id);
@@ -218,7 +274,7 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 				id: globalThis.crypto.randomUUID(),
 				ownerId,
 				roomId: hold.roomId,
-				roomName: hold.roomName,
+				roomName: room?.name ?? hold.roomName,
 				start: hold.start,
 				title
 			};
@@ -232,15 +288,20 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 		});
 
 		socket.on("reservation:delete", (payload: ReservationDeletePayload) => {
-			const reservation = reservations.get(payload.id);
+			const parsedPayload = ReservationDeletePayloadSchema.safeParse(payload);
 
-			if (!reservation || reservation.roomId !== payload.roomId || reservation.ownerId !== ownerId)
+			if (!parsedPayload.success)
 				return;
 
-			reservations.delete(payload.id);
+			const reservation = reservations.get(parsedPayload.data.id);
+
+			if (!reservation || reservation.roomId !== parsedPayload.data.roomId || reservation.ownerId !== ownerId)
+				return;
+
+			reservations.delete(parsedPayload.data.id);
 			clearNotification(reservation.id);
 			rescheduleRoomNotifications(io, reservation.roomId);
-			io.to(roomChannel(payload.roomId)).emit("reservation:deleted", payload);
+			io.to(roomChannel(parsedPayload.data.roomId)).emit("reservation:deleted", parsedPayload.data);
 			io.emit("reservation:my:changed", reservation.ownerId);
 		});
 

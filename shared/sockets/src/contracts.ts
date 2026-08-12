@@ -1,3 +1,12 @@
+import type { z } from "zod";
+
+import type {
+	ReservationCommitPayloadSchema,
+	ReservationDeletePayloadSchema,
+	ReservationHoldPayloadSchema,
+	ReservationRoomPayloadSchema
+} from "./reservation-schemas";
+
 export type RoomReservationWire = {
 	end: string;
 	floorId: string;
@@ -20,28 +29,13 @@ export type RoomReservationHold = {
 	start: string;
 };
 
-export type ReservationRoomPayload = {
-	roomId: string;
-};
+export type ReservationRoomPayload = z.infer<typeof ReservationRoomPayloadSchema>;
 
-export type ReservationHoldPayload = {
-	end: string;
-	floorId: string;
-	holdId: string;
-	roomId: string;
-	roomName: string;
-	start: string;
-};
+export type ReservationHoldPayload = z.infer<typeof ReservationHoldPayloadSchema>;
 
-export type ReservationCommitPayload = {
-	holdId: string;
-	title: string;
-};
+export type ReservationCommitPayload = z.infer<typeof ReservationCommitPayloadSchema>;
 
-export type ReservationDeletePayload = {
-	id: string;
-	roomId: string;
-};
+export type ReservationDeletePayload = z.infer<typeof ReservationDeletePayloadSchema>;
 
 export type ReservationStatePayload = {
 	holds: RoomReservationHold[];
