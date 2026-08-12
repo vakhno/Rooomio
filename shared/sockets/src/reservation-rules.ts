@@ -5,8 +5,50 @@ export type ReservationValidationInput = {
 	title: string;
 };
 
+export type ReservationScheduleDay = {
+	closesAt: string;
+	day: string;
+	dayOff: boolean;
+	opensAt: string;
+};
+
+export type ReservationOfficeHoursInput = {
+	end: string;
+	schedule: ReservationScheduleDay[];
+	start: string;
+};
+
 export const SLOT_MINUTES = 30;
 export const MAX_RESERVATION_MINUTES = 4 * 60;
+export const OFFICE_TIME_ZONE = "Europe/Kyiv";
+
+const officeDateParts = (date: Date) => {
+	const parts = new Intl.DateTimeFormat("en-US", {
+		day: "numeric",
+		hour: "numeric",
+		hour12: false,
+		minute: "numeric",
+		month: "numeric",
+		timeZone: OFFICE_TIME_ZONE,
+		weekday: "short",
+		year: "numeric"
+	}).formatToParts(date);
+	const value = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value ?? "";
+
+	return {
+		day: Number(value("day")),
+		hours: Number(value("hour")),
+		minutes: Number(value("minute")),
+		month: Number(value("month")),
+		weekday: value("weekday").toLowerCase(),
+		year: Number(value("year"))
+	};
+};
+
+const minutesFromTime = (value: string) => {
+	const [hours = "0", minutes = "0"] = value.split(":");
+	return Number(hours) * 60 + Number(minutes);
+};
 
 const toDate = (value: string) => {
 	const date = new Date(value);
@@ -42,6 +84,36 @@ export function validateReservationInput({ end, now = new Date(), start, title }
 
 	if (startDate.getUTCMinutes() % SLOT_MINUTES !== 0 || endDate.getUTCMinutes() % SLOT_MINUTES !== 0)
 		return "Reservation time must use 30 minute slots.";
+
+	return null;
+}
+
+export function validateReservationOfficeHours({ end, schedule, start }: ReservationOfficeHoursInput) {
+	const startDate = toDate(start);
+	const endDate = toDate(end);
+
+	if (!startDate || !endDate)
+		return "Reservation time must be stored in UTC ISO format.";
+
+	const officeStart = officeDateParts(startDate);
+	const officeEnd = officeDateParts(endDate);
+	const workDay = schedule.find(day => day.day.startsWith(officeStart.weekday));
+
+	if (
+		!workDay
+		|| workDay.dayOff
+		|| officeStart.year !== officeEnd.year
+		|| officeStart.month !== officeEnd.month
+		|| officeStart.day !== officeEnd.day
+	) {
+		return "Reservation must be inside room working hours.";
+	}
+
+	const startMinutes = officeStart.hours * 60 + officeStart.minutes;
+	const endMinutes = officeEnd.hours * 60 + officeEnd.minutes;
+
+	if (startMinutes < minutesFromTime(workDay.opensAt) || endMinutes > minutesFromTime(workDay.closesAt))
+		return "Reservation must be inside room working hours.";
 
 	return null;
 }

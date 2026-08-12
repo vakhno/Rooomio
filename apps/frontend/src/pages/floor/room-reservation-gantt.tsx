@@ -4,7 +4,7 @@ import type {
 	ReservationStatePayload,
 	RoomReservationHold,
 	RoomReservationWire
-} from "@shared/sockets";
+} from "@shared/sockets/contracts";
 import type { FloorLayout } from "@shared/zod-schemas";
 import type { Socket } from "socket.io-client";
 
@@ -21,6 +21,7 @@ import {
 import { Button } from "@shared/design-system/button";
 import { cn } from "@shared/design-system/cn";
 import { Input } from "@shared/design-system/input";
+import { ReservationCommitPayloadSchema, ReservationHoldPayloadSchema } from "@shared/sockets/contracts";
 import { CalendarDays, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
@@ -244,16 +245,24 @@ export function RoomReservationGantt({
 		if (!holdIdRef.current)
 			holdIdRef.current = globalThis.crypto?.randomUUID?.() ?? `${room.id}-${Date.now()}`;
 
+		const payload = {
+			end: end.toISOString(),
+			floorId,
+			holdId: holdIdRef.current,
+			roomId: room.id,
+			roomName: room.name,
+			start: start.toISOString()
+		};
+		const parsedPayload = ReservationHoldPayloadSchema.safeParse(payload);
+
+		if (!parsedPayload.success) {
+			toast.error("Reservation data is invalid.");
+			return;
+		}
+
 		socketRef.current.emit(
 			"reservation:hold:upsert",
-			{
-				end: end.toISOString(),
-				floorId,
-				holdId: holdIdRef.current,
-				roomId: room.id,
-				roomName: room.name,
-				start: start.toISOString()
-			},
+			parsedPayload.data,
 			(ack: ReservationAck) => {
 				if (ack.ok)
 					return;
@@ -472,7 +481,14 @@ export function RoomReservationGantt({
 			return;
 		}
 
-		socketRef.current.timeout(5_000).emit("reservation:commit", { holdId, title: trimmedTitle }, (error: Error | null, ack?: ReservationAck) => {
+		const parsedPayload = ReservationCommitPayloadSchema.safeParse({ holdId, title: trimmedTitle });
+
+		if (!parsedPayload.success) {
+			toast.error("Title must be 1 to 100 characters.");
+			return;
+		}
+
+		socketRef.current.timeout(5_000).emit("reservation:commit", parsedPayload.data, (error: Error | null, ack?: ReservationAck) => {
 			holdIdRef.current = null;
 			clearLocalSelection();
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { reservationRangesOverlap } from "@shared/sockets";
+import { reservationRangesOverlap, validateReservationOfficeHours } from "@shared/sockets";
 
 const at = (iso: string) => new Date(iso);
 
@@ -39,5 +39,33 @@ describe("reservationRangesOverlap", () => {
 			at("2026-08-13T00:00:00.000Z"),
 			at("2026-08-13T01:00:00.000Z")
 		)).toBe(false);
+	});
+});
+
+const weekdaySchedule = [
+	{ closesAt: "19:00", day: "monday", dayOff: false, opensAt: "09:00" },
+	{ closesAt: "19:00", day: "tuesday", dayOff: false, opensAt: "09:00" },
+	{ closesAt: "19:00", day: "wednesday", dayOff: false, opensAt: "09:00" },
+	{ closesAt: "19:00", day: "thursday", dayOff: false, opensAt: "09:00" },
+	{ closesAt: "19:00", day: "friday", dayOff: false, opensAt: "09:00" },
+	{ closesAt: "19:00", day: "saturday", dayOff: true, opensAt: "09:00" },
+	{ closesAt: "19:00", day: "sunday", dayOff: true, opensAt: "09:00" }
+];
+
+describe("validateReservationOfficeHours", () => {
+	it("accepts bookings ending exactly at closing time in Europe/Kyiv", () => {
+		expect(validateReservationOfficeHours({
+			end: "2026-08-12T16:00:00.000Z",
+			schedule: weekdaySchedule,
+			start: "2026-08-12T15:30:00.000Z"
+		})).toBeNull();
+	});
+
+	it("rejects bookings before opening time in Europe/Kyiv", () => {
+		expect(validateReservationOfficeHours({
+			end: "2026-08-12T06:30:00.000Z",
+			schedule: weekdaySchedule,
+			start: "2026-08-12T05:30:00.000Z"
+		})).toBe("Reservation must be inside room working hours.");
 	});
 });

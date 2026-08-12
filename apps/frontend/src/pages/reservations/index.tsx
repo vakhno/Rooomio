@@ -1,4 +1,4 @@
-import type { ReservationEndingSoonPayload, RoomReservationWire } from "@shared/sockets";
+import type { ReservationEndingSoonPayload, RoomReservationWire } from "@shared/sockets/contracts";
 import type { Socket } from "socket.io-client";
 
 import {

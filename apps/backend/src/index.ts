@@ -1,5 +1,6 @@
-import { initAuthTables, initBuildingTables, initDb, initFloorPlanTables } from "@shared/pg";
+import { getPgPool, initAuthTables, initBuildingTables, initDb, initFloorPlanTables } from "@shared/pg";
 import { initSocketEvents, initSocketServer } from "@shared/sockets";
+import { FloorLayoutSchema } from "@shared/zod-schemas";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
@@ -35,6 +36,19 @@ const { io, server } = initSocketServer(expressApp);
 expressApp.set("io", io);
 
 initSocketEvents(io, {
+	getRoom: async ({ floorId, roomId }) => {
+		const result = await getPgPool().query<{ structure: unknown }>(
+			`select structure from "floorPlan" where id = $1 limit 1`,
+			[floorId],
+		);
+		const parsed = FloorLayoutSchema.safeParse(result.rows[0]?.structure);
+
+		if (!parsed.success)
+			return null;
+
+		const room = parsed.data.rooms.find(item => item.id === roomId);
+		return room ? { id: room.id, name: room.name, schedule: room.schedule } : null;
+	},
 	getUserId: (socket) => {
 		const token = socket.handshake.headers.cookie
 			?.split(";")
