@@ -162,7 +162,7 @@ app.post("/api/auth/sign-in", async (req, res) => {
 	}
 
 	const userResult = await pool.query(
-		`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where email = $1 limit 1`,
+		`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where lower(email) = $1 limit 1`,
 		[result.data.email]
 	);
 	const user = userResult.rows[0] ?? null;
@@ -200,8 +200,8 @@ app.get("/api/auth/session", async (req, res) => {
 });
 
 app.get("/test/user-by-email", async (req, res) => {
-	const email = String(req.query.email ?? "");
-	const result = await pool.query(`select email, name from "user" where email = $1 limit 1`, [email]);
+	const email = String(req.query.email ?? "").trim().toLowerCase();
+	const result = await pool.query(`select email, name from "user" where lower(email) = $1 limit 1`, [email]);
 	res.json(result.rows[0] ?? null);
 });
 

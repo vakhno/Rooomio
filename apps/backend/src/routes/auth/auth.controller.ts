@@ -55,7 +55,7 @@ export const signIn = async (req: Request, res: Response) => {
 		const clientPg = await getPgPool().connect();
 		const { data: { email: parsedBodyEmail, password: parsedBodyPassword } } = parsedBody;
 		const userQuery = await clientPg.query<UserSchemaType>(
-			`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where email = $1 limit 1`,
+			`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where lower(email) = $1 limit 1`,
 			[parsedBodyEmail],
 		);
 		const { rows: userQueryRows } = userQuery;
@@ -124,7 +124,7 @@ export const signUp = async (req: Request, res: Response) => {
 
 		try {
 			const existingUserQuery = await clientPg.query<UserSchemaType>(
-				`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where email = $1 limit 1`,
+				`select id, name, email, "emailVerified", image, "createdAt", "updatedAt", role from "user" where lower(email) = $1 limit 1`,
 				[parsedBodyEmail],
 			);
 
