@@ -318,16 +318,25 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 			reply?.({ ok: true });
 		});
 
-		socket.on("reservation:delete", (payload: ReservationDeletePayload) => {
+		socket.on("reservation:delete", (payload: ReservationDeletePayload, reply?: (ack: ReservationAck) => void) => {
 			const parsedPayload = ReservationDeletePayloadSchema.safeParse(payload);
 
-			if (!parsedPayload.success)
+			if (!parsedPayload.success) {
+				reply?.({ error: "Reservation data is invalid.", ok: false });
 				return;
+			}
 
 			const reservation = reservations.get(parsedPayload.data.id);
 
-			if (!reservation || reservation.roomId !== parsedPayload.data.roomId || reservation.ownerId !== ownerId)
+			if (!reservation || reservation.roomId !== parsedPayload.data.roomId) {
+				reply?.({ error: "Reservation was not found.", ok: false });
 				return;
+			}
+
+			if (reservation.ownerId !== ownerId) {
+				reply?.({ error: "Only the reservation owner can cancel it.", ok: false });
+				return;
+			}
 
 			const deletedReservations = parsedPayload.data.scope === "series" && reservation.seriesId
 				? [...reservations.values()].filter(item => item.seriesId === reservation.seriesId && item.ownerId === ownerId)
@@ -341,6 +350,7 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 
 			rescheduleRoomNotifications(io, reservation.roomId);
 			io.emit("reservation:my:changed", reservation.ownerId);
+			reply?.({ ok: true });
 		});
 
 		socket.on("disconnect", () => {
