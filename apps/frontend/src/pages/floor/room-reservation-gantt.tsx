@@ -4,7 +4,7 @@ import type {
 	ReservationStatePayload,
 	RoomReservationHold,
 	RoomReservationWire
-} from "@shared/sockets";
+} from "@shared/sockets/contracts";
 import type { FloorLayout } from "@shared/zod-schemas";
 import type { Socket } from "socket.io-client";
 
@@ -21,7 +21,7 @@ import {
 import { Button } from "@shared/design-system/button";
 import { cn } from "@shared/design-system/cn";
 import { Input } from "@shared/design-system/input";
-import { ReservationCommitPayloadSchema, ReservationHoldPayloadSchema } from "@shared/sockets";
+import { ReservationCommitPayloadSchema, ReservationHoldPayloadSchema } from "@shared/sockets/contracts";
 import { CalendarDays, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
