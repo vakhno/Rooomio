@@ -1,11 +1,15 @@
 import { z } from "zod";
 
 const PASSWORD_MIN_LENGTH = 8;
-const PASSWORD_MAX_LENGTH = 128;
+const PASSWORD_MAX_LENGTH = 72;
 const NAME_MAX_LENGTH = 100;
 
 export const SignInSchema = z.object({
-	email: z.email("Enter a valid email"),
+	email: z
+		.string()
+		.trim()
+		.toLowerCase()
+		.pipe(z.email("Enter a valid email")),
 	password: z
 		.string()
 		.min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`)
