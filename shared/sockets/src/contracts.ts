@@ -48,6 +48,12 @@ export type ReservationStatePayload = {
 	reservations: RoomReservationWire[];
 };
 
+export type ReservationEndingSoonPayload = {
+	nextReservation: RoomReservationWire;
+	notifyBeforeMinutes: number;
+	reservation: RoomReservationWire;
+};
+
 export type ReservationAck =
 	| { error: string; ok: false }
 	| { ok: true };

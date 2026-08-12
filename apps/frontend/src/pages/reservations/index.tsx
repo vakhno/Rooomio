@@ -1,4 +1,4 @@
-import type { RoomReservationWire } from "@shared/sockets";
+import type { ReservationEndingSoonPayload, RoomReservationWire } from "@shared/sockets";
 import type { Socket } from "socket.io-client";
 
 import {
@@ -114,6 +114,15 @@ export default function ReservationsPage() {
 		socket.on("reservation:my:changed", (ownerId: string) => {
 			if (ownerId === userId)
 				load();
+		});
+		socket.on("reservation:ending-soon", ({ nextReservation, notifyBeforeMinutes, reservation }: ReservationEndingSoonPayload) => {
+			const currentEnd = new Date(reservation.end);
+			const nextStart = new Date(nextReservation.start);
+
+			toast(`${reservation.roomName} is booked after you`, {
+				description: `${reservation.title} ends at ${formatTime(currentEnd)}. ${nextReservation.title} starts at ${formatTime(nextStart)}.`,
+				duration: Math.max(5_000, notifyBeforeMinutes * 1_000)
+			});
 		});
 
 		return () => {
