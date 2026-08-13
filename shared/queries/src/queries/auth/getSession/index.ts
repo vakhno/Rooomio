@@ -5,15 +5,22 @@ import {
 	type UseQueryOptions
 } from "@tanstack/react-query";
 
-import { authRequest } from "../request";
-
 export type GetSessionProps = {
 	apiBaseUrl: string;
 };
 
 export const getSession = async ({ apiBaseUrl }: GetSessionProps): Promise<ClientSession | null> => {
 	try {
-		return await authRequest<ClientSession | null>({ apiBaseUrl, path: "/session" });
+		const response = await fetch(`${apiBaseUrl}/api/auth/session`, {
+			credentials: "include",
+			headers: { "Content-Type": "application/json" }
+		});
+
+		if (!response.ok) {
+			return null;
+		}
+
+		return await response.json() as ClientSession | null;
 	}
 	catch {
 		return null;

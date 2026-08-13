@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@shared/design-system/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@shared/design-system/form";
 import { Input } from "@shared/design-system/input";
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useSignInEmail } from "@shared/queries";
 import { ROUTES } from "@shared/routes/constants";
 import { SignInSchema, type SignInSchemaType } from "@shared/zod-schemas/auth";
@@ -11,6 +12,7 @@ import { useForm } from "react-hook-form";
 
 export default function SignInForm() {
 	const navigate = useNavigate();
+	const content = DICTIONARY[DEFAULT_LOCALE].pages.login.form;
 	const [error, setError] = useState<string | null>(null);
 	const signInMutation = useSignInEmail({ apiBaseUrl: import.meta.env.VITE_API_URL });
 	const form = useForm<SignInSchemaType>({
@@ -33,7 +35,7 @@ export default function SignInForm() {
 			await navigate({ to: ROUTES.PROFILE.path, replace: true });
 		}
 		catch {
-			setError("Invalid email or password.");
+			setError(content.signInError);
 		}
 	};
 
@@ -45,7 +47,7 @@ export default function SignInForm() {
 					name="email"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Account email</FormLabel>
+							<FormLabel>{content.emailLabel}</FormLabel>
 							<FormControl>
 								<Input type="email" autoComplete="email" {...field} />
 							</FormControl>
@@ -58,7 +60,7 @@ export default function SignInForm() {
 					name="password"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Password</FormLabel>
+							<FormLabel>{content.passwordLabel}</FormLabel>
 							<FormControl>
 								<Input type="password" autoComplete="current-password" {...field} />
 							</FormControl>
@@ -72,7 +74,7 @@ export default function SignInForm() {
 					</p>
 				)}
 				<Button type="submit" className="w-full" disabled={signInMutation.isPending}>
-					{signInMutation.isPending ? "Signing in..." : "Enter coworking"}
+					{signInMutation.isPending ? content.signInPending : content.signInAction}
 				</Button>
 			</form>
 		</Form>

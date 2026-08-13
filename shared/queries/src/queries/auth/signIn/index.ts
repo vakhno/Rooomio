@@ -7,22 +7,25 @@ import {
 	type UseMutationOptions
 } from "@tanstack/react-query";
 
-import { authRequest } from "../request";
-
 type SignInEmailProps = {
 	apiBaseUrl: string;
 	data: SignInInput;
 };
 
-export const signInEmail = ({ apiBaseUrl, data }: SignInEmailProps): Promise<ClientSession> =>
-	authRequest<ClientSession>({
-		apiBaseUrl,
-		path: "/sign-in",
-		init: {
-			method: "POST",
-			body: JSON.stringify(data)
-		}
+export const signInEmail = async ({ apiBaseUrl, data }: SignInEmailProps): Promise<ClientSession> => {
+	const response = await fetch(`${apiBaseUrl}/api/auth/sign-in`, {
+		method: "POST",
+		credentials: "include",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data)
 	});
+
+	if (!response.ok) {
+		throw new Error("Auth request failed");
+	}
+
+	return await response.json() as ClientSession;
+};
 
 type UseSignInEmailProps = {
 	apiBaseUrl: string;

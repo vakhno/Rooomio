@@ -5,18 +5,20 @@ import {
 	useQueryClient
 } from "@tanstack/react-query";
 
-import { authRequest } from "../request";
-
 type LogoutProps = {
 	apiBaseUrl: string;
 };
 
 export const logout = async ({ apiBaseUrl }: LogoutProps) => {
-	await authRequest<null>({
-		apiBaseUrl,
-		path: "/sign-out",
-		init: { method: "POST" }
+	const response = await fetch(`${apiBaseUrl}/api/auth/sign-out`, {
+		method: "POST",
+		credentials: "include",
+		headers: { "Content-Type": "application/json" }
 	});
+
+	if (!response.ok) {
+		throw new Error("Auth request failed");
+	}
 };
 
 const logoutOnSuccess = (queryClient: QueryClient) => {

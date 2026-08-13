@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@shared/design-system/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@shared/design-system/form";
 import { Input } from "@shared/design-system/input";
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useSignUpEmail } from "@shared/queries";
 import { ROUTES } from "@shared/routes/constants";
 import { SignUpSchema, type SignUpSchemaType } from "@shared/zod-schemas/auth";
@@ -11,6 +12,7 @@ import { useForm } from "react-hook-form";
 
 export default function SignUpForm() {
 	const navigate = useNavigate();
+	const content = DICTIONARY[DEFAULT_LOCALE].pages.login.form;
 	const [error, setError] = useState<string | null>(null);
 	const signUpMutation = useSignUpEmail({ apiBaseUrl: import.meta.env.VITE_API_URL });
 	const form = useForm<SignUpSchemaType>({
@@ -35,7 +37,7 @@ export default function SignUpForm() {
 			await navigate({ to: ROUTES.PROFILE.path, replace: true });
 		}
 		catch {
-			setError("Could not create this account.");
+			setError(content.signUpError);
 		}
 	};
 
@@ -47,7 +49,7 @@ export default function SignUpForm() {
 					name="name"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Name</FormLabel>
+							<FormLabel>{content.nameLabel}</FormLabel>
 							<FormControl>
 								<Input autoComplete="name" {...field} />
 							</FormControl>
@@ -60,7 +62,7 @@ export default function SignUpForm() {
 					name="email"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Account email</FormLabel>
+							<FormLabel>{content.emailLabel}</FormLabel>
 							<FormControl>
 								<Input type="email" autoComplete="email" {...field} />
 							</FormControl>
@@ -73,7 +75,7 @@ export default function SignUpForm() {
 					name="password"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Password</FormLabel>
+							<FormLabel>{content.passwordLabel}</FormLabel>
 							<FormControl>
 								<Input type="password" autoComplete="new-password" {...field} />
 							</FormControl>
@@ -87,7 +89,7 @@ export default function SignUpForm() {
 					</p>
 				)}
 				<Button type="submit" className="w-full" disabled={signUpMutation.isPending}>
-					{signUpMutation.isPending ? "Creating account..." : "Create coworking account"}
+					{signUpMutation.isPending ? content.signUpPending : content.signUpAction}
 				</Button>
 			</form>
 		</Form>
