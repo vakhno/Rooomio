@@ -8,7 +8,7 @@ import { Skeleton } from "@shared/design-system/skeleton";
 import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useFloorPlan, useGetSession } from "@shared/queries";
 import { useSearch } from "@tanstack/react-router";
-import { CircleDot, Grid2X2, Layers3, Minus, Plus } from "lucide-react";
+import { CircleDot, Layers3, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import floorLightCarpetSrc from "@/assets/builder/floor-light-carpet.png";
@@ -81,11 +81,12 @@ const getCenteredCamera = (layout: FloorLayout, zoom: number, viewport: Viewport
 		y: viewport.height / 2 - (bounds.minY + bounds.maxY) / 2
 	};
 };
-const getMatchingRoomAtCell = (rooms: FloorRoom[], cell: Cell) => rooms.find(room =>
+const isCellInRoom = (room: FloorRoom, cell: Cell) =>
 	cell[0] >= room.bounds.minCol
 	&& cell[0] <= room.bounds.maxCol
 	&& cell[1] >= room.bounds.minRow
-	&& cell[1] <= room.bounds.maxRow);
+	&& cell[1] <= room.bounds.maxRow;
+const getMatchingRoomAtCell = (rooms: FloorRoom[], cell: Cell) => rooms.find(room => isCellInRoom(room, cell));
 const floorImageKey = (material: FloorMaterial): BuilderImageKey => {
 	if (material === "tile")
 		return "floorTile";
@@ -136,7 +137,6 @@ function drawFloorCanvas({
 	images,
 	layout,
 	selectableRooms,
-	showGrid,
 	zoom
 }: {
 	camera: Point;
@@ -147,7 +147,6 @@ function drawFloorCanvas({
 	images: BuilderImages;
 	layout: FloorLayout;
 	selectableRooms: FloorRoom[];
-	showGrid: boolean;
 	zoom: number;
 }) {
 	const ctx = canvas.getContext("2d");
@@ -178,17 +177,10 @@ function drawFloorCanvas({
 			const cellW = TILE_W * zoom;
 			const cellH = TILE_H * zoom;
 			const hasFloor = floorKeys.has(key);
-			const isHover = hoverCell?.[0] === col && hoverCell[1] === row;
 
 			ctx.globalAlpha = hasFloor ? 0.92 : 0.62;
 			drawImageCell(ctx, images[floorImageKey(floorMaterials.get(key) ?? "wood")], point.x, point.y, cellW, cellH, hasFloor ? palette.secondary : palette.shade0);
 			ctx.globalAlpha = 1;
-
-			if (showGrid || isHover) {
-				ctx.strokeStyle = palette.border;
-				ctx.lineWidth = isHover ? 3 : 1.5;
-				ctx.strokeRect(point.x, point.y, cellW, cellH);
-			}
 		}
 	}
 
@@ -215,10 +207,18 @@ function drawFloorCanvas({
 	for (const room of selectableRooms) {
 		const topLeft = gridToScreen(room.bounds.minCol, room.bounds.minRow, camera.x, camera.y, zoom);
 		const bottomRight = gridToScreen(room.bounds.maxCol + 1, room.bounds.maxRow + 1, camera.x, camera.y, zoom);
+		const isHoveredRoom = hoverCell ? isCellInRoom(room, hoverCell) : false;
+		const lineWidth = isHoveredRoom ? 5 : 3;
+		const inset = lineWidth / 2;
 
-		ctx.strokeStyle = palette.selected;
-		ctx.lineWidth = 4;
-		ctx.strokeRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+		ctx.strokeStyle = isHoveredRoom ? palette.selected : palette.accent;
+		ctx.lineWidth = lineWidth;
+		ctx.strokeRect(
+			topLeft.x + inset,
+			topLeft.y + inset,
+			bottomRight.x - topLeft.x - lineWidth,
+			bottomRight.y - topLeft.y - lineWidth
+		);
 	}
 }
 
@@ -241,7 +241,6 @@ function ReadOnlyFloorCanvas({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [zoom, setZoom] = useState(() => getFitZoom(layout));
 	const [camera, setCamera] = useState(() => getCenteredCamera(layout, getFitZoom(layout)));
-	const [showGrid, setShowGrid] = useState(true);
 	const [hoverCell, setHoverCell] = useState<Cell | null>(null);
 	const [selectedRoomId, setSelectedRoomId] = useState<string | null>(initialReservationRoomId ?? null);
 	const [reservationRoomId, setReservationRoomId] = useState<string | null>(initialReservationRoomId ?? null);
@@ -299,10 +298,9 @@ function ReadOnlyFloorCanvas({
 			images,
 			layout,
 			selectableRooms: filteredRooms,
-			showGrid,
 			zoom
 		});
-	}, [camera, filteredRooms, floorKeys, floorMaterials, hoverCell, images, layout, showGrid, zoom]);
+	}, [camera, filteredRooms, floorKeys, floorMaterials, hoverCell, images, layout, zoom]);
 
 	const getCellFromEvent = (event: PointerEvent<HTMLCanvasElement>) => {
 		const rect = event.currentTarget.getBoundingClientRect();
@@ -498,9 +496,6 @@ function ReadOnlyFloorCanvas({
 					</div>
 
 					<div className="pointer-events-auto absolute right-3 bottom-3 z-10 flex flex-col gap-2 rounded-[3px] border-2 border-border bg-card p-2 [box-shadow:3px_3px_0_var(--border)]">
-						<Button variant="outline" size="icon-sm" onClick={() => setShowGrid(current => !current)} aria-label={content.controls.toggleGridLabel}>
-							<Grid2X2 className="size-4" />
-						</Button>
 						<Button variant="outline" size="icon-sm" onClick={fitView} aria-label={content.controls.resetViewLabel}>
 							<CircleDot className="size-4" />
 						</Button>

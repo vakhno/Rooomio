@@ -225,7 +225,6 @@ export const DICTIONARY = {
 				notFoundTitle: "Floor not found",
 				notFoundDescription: "Choose another floor from buildings.",
 				controls: {
-					toggleGridLabel: "Toggle grid",
 					resetViewLabel: "Reset view",
 					zoomInLabel: "Zoom in",
 					zoomOutLabel: "Zoom out",
