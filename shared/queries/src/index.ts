@@ -1,4 +1,3 @@
-export * from "./lib/auth";
 export * from "./queries/buildings";
 export * from "./queries/floorPlans";
 export * from "./queries/auth/getSession";

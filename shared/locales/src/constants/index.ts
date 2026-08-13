@@ -33,6 +33,25 @@ export const DICTIONARY = {
 				bookAction: "Book",
 				createAction: "Create",
 			},
+			login: {
+				description: "Sign in to manage your bookings.",
+				footer: "Access keeps rooms, meetings, work spots, and profile actions behind your account.",
+				tabs: {
+					signIn: "Sign In",
+					signUp: "Sign Up",
+				},
+				form: {
+					nameLabel: "Name",
+					emailLabel: "Email",
+					passwordLabel: "Password",
+					signInAction: "Sign In",
+					signInPending: "Signing in...",
+					signInError: "Invalid email or password.",
+					signUpAction: "Sign Up",
+					signUpPending: "Creating account...",
+					signUpError: "Could not create this account.",
+				},
+			},
 		},
 		toast: {
 			error: {

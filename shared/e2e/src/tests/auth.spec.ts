@@ -10,13 +10,13 @@ test.describe("Email password auth", () => {
 	test.describe("Login page", () => {
 		test("renders sign in and sign up tabs", async ({ page }) => {
 			await page.goto("/auth/login");
-			await expect(page.getByRole("tab", { name: "Enter" })).toBeVisible();
-			await expect(page.getByRole("textbox", { name: "Account email" })).toBeVisible();
+			await expect(page.getByRole("tab", { name: "Sign In" })).toBeVisible();
+			await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
 			await expect(page.getByLabel("Password")).toBeVisible();
 
-			await page.getByRole("tab", { name: "Create" }).click();
+			await page.getByRole("tab", { name: "Sign Up" }).click();
 			await expect(page.getByRole("textbox", { name: "Name" })).toBeVisible();
-			await expect(page.getByRole("textbox", { name: "Account email" })).toBeVisible();
+			await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
 			await expect(page.getByLabel("Password")).toBeVisible();
 		});
 	});
@@ -37,11 +37,11 @@ test.describe("Email password auth", () => {
 			const name = "Test User";
 
 			await page.goto("/auth/login");
-			await page.getByRole("tab", { name: "Create" }).click();
+			await page.getByRole("tab", { name: "Sign Up" }).click();
 			await page.getByRole("textbox", { name: "Name" }).fill(name);
-			await page.getByRole("textbox", { name: "Account email" }).fill(email);
+			await page.getByRole("textbox", { name: "Email" }).fill(email);
 			await page.getByLabel("Password").fill(PASSWORD);
-			await page.getByRole("button", { name: "Create coworking account" }).click();
+			await page.getByRole("button", { name: "Sign Up" }).click();
 
 			await expect(page).toHaveURL(new RegExp(`${ROUTES.PROFILE.path}$`));
 
@@ -99,9 +99,9 @@ test.describe("Email password auth", () => {
 			expect(res.ok()).toBe(true);
 
 			await page.goto("/auth/login");
-			await page.getByRole("textbox", { name: "Account email" }).fill(email);
+			await page.getByRole("textbox", { name: "Email" }).fill(email);
 			await page.getByLabel("Password").fill(PASSWORD);
-			await page.getByRole("button", { name: "Enter coworking" }).click();
+			await page.getByRole("button", { name: "Sign In" }).click();
 
 			await expect(page).toHaveURL(new RegExp(`${ROUTES.PROFILE.path}$`));
 		});
@@ -116,9 +116,9 @@ test.describe("Email password auth", () => {
 			expect(res.ok()).toBe(true);
 
 			await page.goto("/auth/login");
-			await page.getByRole("textbox", { name: "Account email" }).fill(` ${email.toUpperCase()} `);
+			await page.getByRole("textbox", { name: "Email" }).fill(` ${email.toUpperCase()} `);
 			await page.getByLabel("Password").fill(PASSWORD);
-			await page.getByRole("button", { name: "Enter coworking" }).click();
+			await page.getByRole("button", { name: "Sign In" }).click();
 
 			await expect(page).toHaveURL(new RegExp(`${ROUTES.PROFILE.path}$`));
 		});
