@@ -5,8 +5,7 @@
 	"description": "Shared TanStack Query option factories",
 	"main": "./src/index.ts",
 	"exports": {
-		".": "./src/index.ts",
-		"./auth": "./src/lib/auth.ts"
+		".": "./src/index.ts"
 	},
 	"scripts": {
 		"build": "tsc",

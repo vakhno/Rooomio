@@ -11,22 +11,6 @@ import { clearTokenCookie, findUserById, TOKEN_COOKIE_NAME, TOKEN_TTL_SECONDS, v
 
 const PASSWORD_SALT_ROUNDS = 10;
 
-const toSession = (user: UserSchemaType, expiresAt = new Date(Date.now() + TOKEN_TTL_SECONDS * 1000)): ClientSession => ({
-	user: {
-		id: user.id,
-		name: user.name,
-		email: user.email,
-		emailVerified: user.emailVerified,
-		image: user.image,
-		role: user.role,
-		createdAt: user.createdAt.toISOString(),
-		updatedAt: user.updatedAt.toISOString(),
-	},
-	session: {
-		expiresAt: expiresAt.toISOString(),
-	},
-});
-
 const tokenCookieOptions = (): CookieOptions => {
 	const appUrl = process.env.VITE_APP_URL || "";
 	const secure = appUrl.startsWith("https://");
@@ -94,9 +78,15 @@ export const signIn = async (req: Request, res: Response) => {
 				expiresIn: TOKEN_TTL_SECONDS,
 			},
 		);
+		const clientSession: ClientSession = {
+			user: { ...user, createdAt: user.createdAt.toISOString(), updatedAt: user.updatedAt.toISOString() },
+			session: {
+				expiresAt: new Date(Date.now() + TOKEN_TTL_SECONDS * 1000).toISOString(),
+			},
+		};
 
 		res.cookie(TOKEN_COOKIE_NAME, token, tokenCookieOptions());
-		return res.status(200).json(toSession(user));
+		return res.status(200).json(clientSession);
 	}
 	catch {
 		return res.status(500).json({ error: "Could not sign in" });
@@ -166,9 +156,15 @@ export const signUp = async (req: Request, res: Response) => {
 					expiresIn: TOKEN_TTL_SECONDS,
 				},
 			);
+			const clientSession: ClientSession = {
+				user: { ...insertedUser, createdAt: insertedUser.createdAt.toISOString(), updatedAt: insertedUser.updatedAt.toISOString() },
+				session: {
+					expiresAt: new Date(Date.now() + TOKEN_TTL_SECONDS * 1000).toISOString(),
+				},
+			};
 
 			res.cookie(TOKEN_COOKIE_NAME, token, tokenCookieOptions());
-			return res.status(201).json(toSession(insertedUser));
+			return res.status(201).json(clientSession);
 		}
 		catch (error) {
 			await clientPg.query("rollback").catch(() => {});
@@ -212,7 +208,14 @@ export const getSession = async (req: Request, res: Response) => {
 			return res.json(null);
 		}
 
-		return res.json(toSession(user, typeof payload.exp === "number" ? new Date(payload.exp * 1000) : undefined));
+		const clientSession: ClientSession = {
+			user: { ...user, createdAt: user.createdAt.toISOString(), updatedAt: user.updatedAt.toISOString() },
+			session: {
+				expiresAt: new Date(Date.now() + TOKEN_TTL_SECONDS * 1000).toISOString(),
+			},
+		};
+
+		return res.json(clientSession);
 	}
 	catch {
 		return res.status(500).json({ error: "Could not get session" });

@@ -3,25 +3,21 @@ import type { PointerEvent } from "react";
 
 import { Badge } from "@shared/design-system/badge";
 import { Button } from "@shared/design-system/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle
-} from "@shared/design-system/dialog";
 import { Input } from "@shared/design-system/input";
 import { Skeleton } from "@shared/design-system/skeleton";
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useFloorPlan, useGetSession } from "@shared/queries";
 import { useSearch } from "@tanstack/react-router";
-import { CircleDot, Grid2X2, Layers3, Minus, Plus } from "lucide-react";
+import { CircleDot, Layers3, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import floorLightCarpetSrc from "@/assets/builder/floor-light-carpet.png";
 import floorWhiteTileSrc from "@/assets/builder/floor-white-tile.png";
 import floorWoodParquetSrc from "@/assets/builder/floor-wood-parquet.png";
 
-import { type RoomReservation, RoomReservationGantt } from "./room-reservation-gantt";
+import type { RoomReservation } from "./room-reservation-gantt";
+
+import { RoomReservationDialog } from "./room-reservation-dialog";
 
 type Cell = [number, number];
 type Point = { x: number; y: number };
@@ -85,11 +81,12 @@ const getCenteredCamera = (layout: FloorLayout, zoom: number, viewport: Viewport
 		y: viewport.height / 2 - (bounds.minY + bounds.maxY) / 2
 	};
 };
-const getMatchingRoomAtCell = (rooms: FloorRoom[], cell: Cell) => rooms.find(room =>
+const isCellInRoom = (room: FloorRoom, cell: Cell) =>
 	cell[0] >= room.bounds.minCol
 	&& cell[0] <= room.bounds.maxCol
 	&& cell[1] >= room.bounds.minRow
-	&& cell[1] <= room.bounds.maxRow);
+	&& cell[1] <= room.bounds.maxRow;
+const getMatchingRoomAtCell = (rooms: FloorRoom[], cell: Cell) => rooms.find(room => isCellInRoom(room, cell));
 const floorImageKey = (material: FloorMaterial): BuilderImageKey => {
 	if (material === "tile")
 		return "floorTile";
@@ -140,7 +137,6 @@ function drawFloorCanvas({
 	images,
 	layout,
 	selectableRooms,
-	showGrid,
 	zoom
 }: {
 	camera: Point;
@@ -151,7 +147,6 @@ function drawFloorCanvas({
 	images: BuilderImages;
 	layout: FloorLayout;
 	selectableRooms: FloorRoom[];
-	showGrid: boolean;
 	zoom: number;
 }) {
 	const ctx = canvas.getContext("2d");
@@ -182,17 +177,10 @@ function drawFloorCanvas({
 			const cellW = TILE_W * zoom;
 			const cellH = TILE_H * zoom;
 			const hasFloor = floorKeys.has(key);
-			const isHover = hoverCell?.[0] === col && hoverCell[1] === row;
 
 			ctx.globalAlpha = hasFloor ? 0.92 : 0.62;
 			drawImageCell(ctx, images[floorImageKey(floorMaterials.get(key) ?? "wood")], point.x, point.y, cellW, cellH, hasFloor ? palette.secondary : palette.shade0);
 			ctx.globalAlpha = 1;
-
-			if (showGrid || isHover) {
-				ctx.strokeStyle = palette.border;
-				ctx.lineWidth = isHover ? 3 : 1.5;
-				ctx.strokeRect(point.x, point.y, cellW, cellH);
-			}
 		}
 	}
 
@@ -219,10 +207,18 @@ function drawFloorCanvas({
 	for (const room of selectableRooms) {
 		const topLeft = gridToScreen(room.bounds.minCol, room.bounds.minRow, camera.x, camera.y, zoom);
 		const bottomRight = gridToScreen(room.bounds.maxCol + 1, room.bounds.maxRow + 1, camera.x, camera.y, zoom);
+		const isHoveredRoom = hoverCell ? isCellInRoom(room, hoverCell) : false;
+		const lineWidth = isHoveredRoom ? 5 : 3;
+		const inset = lineWidth / 2;
 
-		ctx.strokeStyle = palette.selected;
-		ctx.lineWidth = 4;
-		ctx.strokeRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+		ctx.strokeStyle = isHoveredRoom ? palette.selected : palette.accent;
+		ctx.lineWidth = lineWidth;
+		ctx.strokeRect(
+			topLeft.x + inset,
+			topLeft.y + inset,
+			bottomRight.x - topLeft.x - lineWidth,
+			bottomRight.y - topLeft.y - lineWidth
+		);
 	}
 }
 
@@ -241,10 +237,10 @@ function ReadOnlyFloorCanvas({
 	layout: FloorLayout;
 	name: string;
 }) {
+	const content = DICTIONARY[DEFAULT_LOCALE].pages.floor;
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [zoom, setZoom] = useState(() => getFitZoom(layout));
 	const [camera, setCamera] = useState(() => getCenteredCamera(layout, getFitZoom(layout)));
-	const [showGrid, setShowGrid] = useState(true);
 	const [hoverCell, setHoverCell] = useState<Cell | null>(null);
 	const [selectedRoomId, setSelectedRoomId] = useState<string | null>(initialReservationRoomId ?? null);
 	const [reservationRoomId, setReservationRoomId] = useState<string | null>(initialReservationRoomId ?? null);
@@ -302,10 +298,9 @@ function ReadOnlyFloorCanvas({
 			images,
 			layout,
 			selectableRooms: filteredRooms,
-			showGrid,
 			zoom
 		});
-	}, [camera, filteredRooms, floorKeys, floorMaterials, hoverCell, images, layout, showGrid, zoom]);
+	}, [camera, filteredRooms, floorKeys, floorMaterials, hoverCell, images, layout, zoom]);
 
 	const getCellFromEvent = (event: PointerEvent<HTMLCanvasElement>) => {
 		const rect = event.currentTarget.getBoundingClientRect();
@@ -412,34 +407,23 @@ function ReadOnlyFloorCanvas({
 
 	return (
 		<>
-			<Dialog open={Boolean(reservationRoom)} onOpenChange={open => !open && setReservationRoomId(null)}>
-				<DialogContent className="h-[calc(100svh-2rem)] w-[calc(100vw-2rem)] min-w-0 overflow-hidden sm:max-w-[calc(100vw-2rem)]">
-					<DialogHeader>
-						<DialogTitle>Room reservation</DialogTitle>
-						<DialogDescription>
-							Choose a free time range for the selected office room.
-						</DialogDescription>
-					</DialogHeader>
-					{reservationRoom && (
-						<RoomReservationGantt
-							room={reservationRoom}
-							currentUserId={currentUserId}
-							floorId={floorId}
-							initialDate={initialWeekStart ? new Date(initialWeekStart) : undefined}
-							reservations={reservations.filter(reservation => reservation.roomId === reservationRoom.id)}
-							onCreate={createReservation}
-							onDelete={deleteReservation}
-						/>
-					)}
-				</DialogContent>
-			</Dialog>
+			<RoomReservationDialog
+				currentUserId={currentUserId}
+				floorId={floorId}
+				initialDate={initialWeekStart ? new Date(initialWeekStart) : undefined}
+				onCreate={createReservation}
+				onDelete={deleteReservation}
+				onOpenChange={open => !open && setReservationRoomId(null)}
+				reservations={reservations}
+				room={reservationRoom}
+			/>
 
 			<div className="h-[calc(100svh-var(--header-height)-var(--header-margin-bottom)-1.5rem)] min-h-[420px] w-full px-2 pb-2">
 				<div className="relative h-full overflow-hidden overscroll-contain rounded-[3px] border-2 border-border bg-shade-1 [box-shadow:4px_4px_0_var(--border)]">
 					<canvas
 						ref={canvasRef}
 						role="application"
-						aria-label="Floor plan"
+						aria-label={content.floorPlanLabel}
 						className={`block size-full touch-none overscroll-contain ${cursorClass}`}
 						onPointerDown={handlePointerDown}
 						onPointerMove={handlePointerMove}
@@ -463,11 +447,11 @@ function ReadOnlyFloorCanvas({
 									{" "}
 									{rooms.length}
 									{" "}
-									rooms
+									{content.roomsLabel}
 								</Badge>
 							</div>
 							<label className="mt-3 block space-y-1 text-xs font-extrabold text-foreground">
-								<span>Minimum capacity</span>
+								<span>{content.minimumCapacityLabel}</span>
 								<div className="flex items-center gap-2">
 									<Input
 										className="h-9 w-24"
@@ -476,11 +460,11 @@ function ReadOnlyFloorCanvas({
 										type="number"
 										value={minimumCapacity}
 										onChange={event => setMinimumCapacity(event.currentTarget.value)}
-										placeholder="Any"
+										placeholder={content.anyCapacityPlaceholder}
 									/>
 									{minimumCapacity && (
 										<Button type="button" variant="outline" size="sm" onClick={() => setMinimumCapacity("")}>
-											Clear
+											{content.clearAction}
 										</Button>
 									)}
 								</div>
@@ -497,7 +481,7 @@ function ReadOnlyFloorCanvas({
 									<Badge>
 										{selectedRoom.capacity}
 										{" "}
-										places
+										{content.placesLabel}
 									</Badge>
 								</div>
 							</div>
@@ -505,24 +489,21 @@ function ReadOnlyFloorCanvas({
 
 						{rooms.length > 0 && filteredRooms.length === 0 && (
 							<div className="pointer-events-auto max-w-xs rounded-[3px] border-2 border-border bg-card p-3 [box-shadow:3px_3px_0_var(--border)]">
-								<p className="text-sm font-extrabold text-foreground">No rooms match</p>
-								<p className="text-xs font-semibold text-muted-foreground">Lower the minimum capacity or clear the filter.</p>
+								<p className="text-sm font-extrabold text-foreground">{content.noRoomsMatchTitle}</p>
+								<p className="text-xs font-semibold text-muted-foreground">{content.noRoomsMatchDescription}</p>
 							</div>
 						)}
 					</div>
 
 					<div className="pointer-events-auto absolute right-3 bottom-3 z-10 flex flex-col gap-2 rounded-[3px] border-2 border-border bg-card p-2 [box-shadow:3px_3px_0_var(--border)]">
-						<Button variant="outline" size="icon-sm" onClick={() => setShowGrid(current => !current)} aria-label="Toggle grid">
-							<Grid2X2 className="size-4" />
-						</Button>
-						<Button variant="outline" size="icon-sm" onClick={fitView} aria-label="Reset view">
+						<Button variant="outline" size="icon-sm" onClick={fitView} aria-label={content.controls.resetViewLabel}>
 							<CircleDot className="size-4" />
 						</Button>
 						<div className="flex flex-col gap-1">
-							<Button variant="outline" size="icon-sm" onClick={() => setZoom(current => Math.min(MAX_ZOOM, current + 0.1))} aria-label="Zoom in">
+							<Button variant="outline" size="icon-sm" onClick={() => setZoom(current => Math.min(MAX_ZOOM, current + 0.1))} aria-label={content.controls.zoomInLabel}>
 								<Plus className="size-4" />
 							</Button>
-							<Button variant="outline" size="icon-sm" onClick={() => setZoom(current => Math.max(MIN_ZOOM, current - 0.1))} aria-label="Zoom out">
+							<Button variant="outline" size="icon-sm" onClick={() => setZoom(current => Math.max(MIN_ZOOM, current - 0.1))} aria-label={content.controls.zoomOutLabel}>
 								<Minus className="size-4" />
 							</Button>
 						</div>
@@ -535,6 +516,7 @@ function ReadOnlyFloorCanvas({
 
 export default function FloorPage() {
 	const apiBaseUrl = import.meta.env.VITE_API_URL;
+	const content = DICTIONARY[DEFAULT_LOCALE].pages.floor;
 	const { floorId = "", roomId, weekStart } = useSearch({ from: "/_home/floor" });
 	const floorPlan = useFloorPlan({ apiBaseUrl, floorId });
 	const { data: session } = useGetSession({ apiBaseUrl });
@@ -547,8 +529,8 @@ export default function FloorPage() {
 		return (
 			<div className="px-4 py-8">
 				<div className="rounded-[3px] border-2 border-border bg-shade-1 p-4">
-					<p className="text-sm font-extrabold text-foreground">Floor not found</p>
-					<p className="text-sm font-semibold text-muted-foreground">Choose another floor from buildings.</p>
+					<p className="text-sm font-extrabold text-foreground">{content.notFoundTitle}</p>
+					<p className="text-sm font-semibold text-muted-foreground">{content.notFoundDescription}</p>
 				</div>
 			</div>
 		);

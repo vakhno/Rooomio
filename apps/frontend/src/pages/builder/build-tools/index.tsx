@@ -1,7 +1,8 @@
 import { Button } from "@shared/design-system/button";
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { DoorOpen, Grid2X2, SquareDashed, TableProperties } from "lucide-react";
 
-import type { BuildTool, DoorStyle, FloorMaterial, Tool, WallMaterial } from "./builder-types";
+import type { BuildTool, DoorStyle, FloorMaterial, Tool, WallMaterial } from "../builder-types";
 
 type BuildToolsProps = {
 	doorStyle: DoorStyle;
@@ -24,38 +25,40 @@ export function BuildTools({
 	tool,
 	wallMaterial
 }: BuildToolsProps) {
+	const content = DICTIONARY[DEFAULT_LOCALE].pages.builder.tools;
+
 	return (
 		<div className="flex max-w-[min(760px,calc(100vw-1.5rem))] flex-col gap-2">
 			<div className="pointer-events-auto flex flex-wrap gap-2 rounded-[3px] border-2 border-border bg-card p-2 [box-shadow:3px_3px_0_var(--border)]">
 				<Button variant={tool === "room" ? "default" : "outline"} size="sm" onClick={() => selectTool("room")}>
 					<SquareDashed className="size-4" />
-					Room
+					{content.room}
 				</Button>
 				<Button variant={tool === "floor" ? "default" : "outline"} size="sm" onClick={() => selectTool("floor")}>
 					<Grid2X2 className="size-4" />
-					Floor
+					{content.floor}
 				</Button>
 				<Button variant={tool === "wall" ? "default" : "outline"} size="sm" onClick={() => selectTool("wall")}>
 					<Grid2X2 className="size-4" />
-					Wall
+					{content.wall}
 				</Button>
 				<Button variant={tool === "door" ? "default" : "outline"} size="sm" onClick={() => selectTool("door")}>
 					<DoorOpen className="size-4" />
-					Door
+					{content.door}
 				</Button>
 				<Button variant={tool === "window" ? "default" : "outline"} size="sm" onClick={() => selectTool("window")}>
 					<TableProperties className="size-4" />
-					Window
+					{content.window}
 				</Button>
 			</div>
 
 			{tool === "wall" && (
 				<div className="pointer-events-auto flex w-fit flex-wrap gap-2 rounded-[3px] border-2 border-border bg-card p-2 [box-shadow:3px_3px_0_var(--border)]">
 					<Button variant={wallMaterial === "drywall" ? "default" : "outline"} size="sm" onClick={() => setWallMaterial("drywall")}>
-						Drywall
+						{content.drywall}
 					</Button>
 					<Button variant={wallMaterial === "glass" ? "default" : "outline"} size="sm" onClick={() => setWallMaterial("glass")}>
-						Glass
+						{content.glass}
 					</Button>
 				</div>
 			)}
@@ -63,10 +66,10 @@ export function BuildTools({
 			{tool === "door" && (
 				<div className="pointer-events-auto flex w-fit flex-wrap gap-2 rounded-[3px] border-2 border-border bg-card p-2 [box-shadow:3px_3px_0_var(--border)]">
 					<Button variant={doorStyle === "wood" ? "default" : "outline"} size="sm" onClick={() => setDoorStyle("wood")}>
-						Wood
+						{content.wood}
 					</Button>
 					<Button variant={doorStyle === "glass" ? "default" : "outline"} size="sm" onClick={() => setDoorStyle("glass")}>
-						Glass
+						{content.glass}
 					</Button>
 				</div>
 			)}
@@ -74,13 +77,13 @@ export function BuildTools({
 			{tool === "floor" && (
 				<div className="pointer-events-auto flex w-fit flex-wrap gap-2 rounded-[3px] border-2 border-border bg-card p-2 [box-shadow:3px_3px_0_var(--border)]">
 					<Button variant={floorMaterial === "wood" ? "default" : "outline"} size="sm" onClick={() => setFloorMaterial("wood")}>
-						Wood
+						{content.wood}
 					</Button>
 					<Button variant={floorMaterial === "tile" ? "default" : "outline"} size="sm" onClick={() => setFloorMaterial("tile")}>
-						Tile
+						{content.tile}
 					</Button>
 					<Button variant={floorMaterial === "carpet" ? "default" : "outline"} size="sm" onClick={() => setFloorMaterial("carpet")}>
-						Carpet
+						{content.carpet}
 					</Button>
 				</div>
 			)}

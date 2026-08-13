@@ -1,3 +1,4 @@
+import type { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import type {
 	ReservationAck,
 	ReservationEndingSoonPayload,
@@ -8,16 +9,6 @@ import type {
 import type { FloorLayout } from "@shared/zod-schemas";
 import type { Socket } from "socket.io-client";
 
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle
-} from "@shared/design-system/alert-dialog";
 import { Button } from "@shared/design-system/button";
 import { cn } from "@shared/design-system/cn";
 import { Input } from "@shared/design-system/input";
@@ -26,6 +17,8 @@ import { CalendarDays, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
+
+import { DeleteReservationDialog } from "./delete-reservation-dialog";
 
 type FloorRoom = NonNullable<FloorLayout["rooms"]>[number];
 
@@ -54,7 +47,6 @@ const SLOT_MINUTES = 30;
 const MAX_RESERVATION_MINUTES = 4 * 60;
 const MAX_WEEKLY_RECURRENCE_COUNT = 52;
 const OFFICE_TIME_ZONE = "Europe/Kyiv";
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const sameDay = (a: Date, b: Date) =>
 	a.getFullYear() === b.getFullYear()
@@ -177,14 +169,16 @@ const fromWireReservation = (reservation: RoomReservationWire): RoomReservation 
 });
 
 export function RoomReservationGantt({
+	content,
+	currentUserId,
+	floorId,
+	initialDate,
 	onCreate,
 	onDelete,
 	reservations,
-	room,
-	floorId,
-	initialDate,
-	currentUserId
+	room
 }: {
+	content: typeof DICTIONARY[typeof DEFAULT_LOCALE]["pages"]["floor"]["reservationGantt"];
 	currentUserId: string;
 	floorId: string;
 	initialDate?: Date;
@@ -265,7 +259,7 @@ export function RoomReservationGantt({
 		const parsedPayload = ReservationHoldPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			toast.error("Reservation data is invalid.");
+			toast.error(content.invalidDataError);
 			return;
 		}
 
@@ -438,15 +432,15 @@ export function RoomReservationGantt({
 			const current = fromWireReservation(reservation);
 			const next = fromWireReservation(nextReservation);
 
-			toast(`${current.roomName} is booked after you`, {
-				description: `${current.title} ends at ${formatTime(current.end)}. ${next.title} starts at ${formatTime(next.start)}.`,
+			toast(`${current.roomName} ${content.endingSoonToast.titleSuffix}`, {
+				description: `${current.title} ${content.endingSoonToast.endsAt} ${formatTime(current.end)}. ${next.title} ${content.endingSoonToast.startsAt} ${formatTime(next.start)}.`,
 				duration: Math.max(5_000, notifyBeforeMinutes * 1_000)
 			});
 		});
 
 		socket.on("disconnect", () => {
 			if (holdIdRef.current)
-				toast.error("Connection lost. Reservation hold was removed.");
+				toast.error(content.connectionLostError);
 
 			holdIdRef.current = null;
 			setSocketId(null);
@@ -464,7 +458,7 @@ export function RoomReservationGantt({
 			socket.disconnect();
 			socketRef.current = null;
 		};
-	}, [onCreate, onDelete, room.id]);
+	}, [content.connectionLostError, content.endingSoonToast.endsAt, content.endingSoonToast.startsAt, content.endingSoonToast.titleSuffix, content.invalidDataError, onCreate, onDelete, room.id]);
 
 	const confirmPending = () => {
 		const trimmedTitle = title.trim();
@@ -475,14 +469,14 @@ export function RoomReservationGantt({
 		const holdId = holdIdRef.current;
 
 		if (!socketRef.current?.connected || !holdId) {
-			toast.error("Reservation failed. Please reconnect and try again.");
+			toast.error(content.reconnectError);
 			return;
 		}
 
 		const parsedPayload = ReservationCommitPayloadSchema.safeParse({ holdId, recurrenceCount, title: trimmedTitle });
 
 		if (!parsedPayload.success) {
-			toast.error("Title must be 1 to 100 characters.");
+			toast.error(content.titleLengthError);
 			return;
 		}
 
@@ -491,7 +485,7 @@ export function RoomReservationGantt({
 			clearLocalSelection();
 
 			if (error || !ack) {
-				toast.error("Reservation failed. Please choose another time range.");
+				toast.error(content.chooseAnotherRangeError);
 				return;
 			}
 
@@ -500,7 +494,7 @@ export function RoomReservationGantt({
 				return;
 			}
 
-			toast.success(recurrenceCount > 1 ? "Reservation series saved." : "Reservation saved.");
+			toast.success(recurrenceCount > 1 ? content.seriesSavedSuccess : content.savedSuccess);
 		});
 	};
 
@@ -531,8 +525,8 @@ export function RoomReservationGantt({
 					if (isOwn)
 						setDeleteTarget(reservation);
 				}}
-				aria-label={`Delete reservation from ${formatTime(reservation.start)} to ${formatTime(reservation.end)}`}
-				title={isOwn ? "Cancel reservation" : "Reserved by another user"}
+				aria-label={`${content.deleteReservationLabel} ${formatTime(reservation.start)} ${content.toLabel} ${formatTime(reservation.end)}`}
+				title={isOwn ? content.cancelReservationTitle : content.reservedByAnotherUserTitle}
 			>
 				{sameDay(current, reservation.start) && formatTime(current) === formatTime(reservation.start)
 					? `${reservation.title} ${formatTime(reservation.start)}-${formatTime(reservation.end)}`
@@ -556,7 +550,7 @@ export function RoomReservationGantt({
 		}
 
 		setDeleteTarget(null);
-		toast.success(scope === "series" ? "Reservation series canceled." : "Reservation canceled.");
+		toast.success(scope === "series" ? content.cancelSeriesSuccess : content.cancelSuccess);
 	};
 
 	const renderHold = (day: number, slot: number) => {
@@ -575,7 +569,7 @@ export function RoomReservationGantt({
 				aria-hidden="true"
 			>
 				{sameDay(current, start) && formatTime(current) === formatTime(start)
-					? `${hold.ownerId === socketId ? "Your hold" : "Selecting"} ${formatTime(start)}-${formatTime(end)}`
+					? `${hold.ownerId === socketId ? content.yourHoldLabel : content.selectingLabel} ${formatTime(start)}-${formatTime(end)}`
 					: ""}
 			</div>
 		);
@@ -593,19 +587,21 @@ export function RoomReservationGantt({
 						{" "}
 						{room.capacity}
 						{" "}
-						places
+						{content.placesLabel}
 					</p>
 				</div>
 				<div className="flex items-center gap-2 text-xs font-extrabold text-muted-foreground">
 					<CalendarDays className="size-4" />
-					7 days, 30 min slots
+					{content.slotSummary}
 				</div>
 				{showOfficeTimeZone && (
 					<p className="basis-full text-xs font-semibold text-muted-foreground">
-						Times are shown in
+						{content.timesShownIn}
 						{" "}
 						{browserTimeZone}
-						. Office hours are checked in
+						.
+						{" "}
+						{content.officeHoursCheckedIn}
 						{" "}
 						{OFFICE_TIME_ZONE}
 						.
@@ -622,7 +618,7 @@ export function RoomReservationGantt({
 						cancelPending();
 						setBaseDate(current => addDays(current, -VISIBLE_DAYS));
 					}}
-					aria-label="Show previous 7 days"
+					aria-label={content.previousDaysLabel}
 				>
 					<ChevronLeft className="size-4" />
 				</Button>
@@ -635,7 +631,7 @@ export function RoomReservationGantt({
 						cancelPending();
 						setBaseDate(current => addDays(current, VISIBLE_DAYS));
 					}}
-					aria-label="Show next 7 days"
+					aria-label={content.nextDaysLabel}
 				>
 					<ChevronRight className="size-4" />
 				</Button>
@@ -652,7 +648,7 @@ export function RoomReservationGantt({
 								sameDay(day, startOfToday()) && "bg-selected"
 							)}
 						>
-							<div>{DAY_NAMES[day.getDay()]}</div>
+							<div>{content.dayNames[day.getDay()]}</div>
 							<div>{day.getDate()}</div>
 						</div>
 					))}
@@ -706,20 +702,20 @@ export function RoomReservationGantt({
 
 			<div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
 				<Trash2 className="size-4" />
-				Click one cell to start a range, hover or scroll to the end time, then click another cell to finish.
+				{content.instructions}
 			</div>
 
 			{pending && (
 				<div className="absolute inset-0 z-40 flex items-center justify-center bg-shade-5/50 p-4">
 					<div role="dialog" aria-modal="true" aria-labelledby="reservation-confirm-title" className="w-full max-w-md rounded-[3px] border-2 border-border bg-card p-5 text-card-foreground [box-shadow:6px_6px_0_var(--border)]">
 						<div className="space-y-2">
-							<h3 id="reservation-confirm-title" className="text-lg font-extrabold">Confirm reservation</h3>
+							<h3 id="reservation-confirm-title" className="text-lg font-extrabold">{content.confirmDialog.title}</h3>
 							<p className="text-sm font-semibold text-muted-foreground">
-								Reserve
+								{content.confirmDialog.reservePrefix}
 								{" "}
 								{room.name}
 								{" "}
-								for this time range?
+								{content.confirmDialog.reserveSuffix}
 							</p>
 						</div>
 						<div className="mt-4 rounded-[3px] border-2 border-border bg-selected p-3 text-sm font-extrabold text-foreground">
@@ -737,18 +733,18 @@ export function RoomReservationGantt({
 							}}
 						>
 							<label className="block space-y-2 text-sm font-extrabold text-foreground">
-								<span>Title</span>
+								<span>{content.confirmDialog.titleLabel}</span>
 								<Input
 									autoFocus
 									maxLength={100}
 									required
 									value={title}
 									onChange={event => setTitle(event.currentTarget.value)}
-									placeholder="Planning session"
+									placeholder={content.confirmDialog.titlePlaceholder}
 								/>
 							</label>
 							<label className="block space-y-2 text-sm font-extrabold text-foreground">
-								<span>Weekly occurrences</span>
+								<span>{content.confirmDialog.weeklyOccurrencesLabel}</span>
 								<Input
 									inputMode="numeric"
 									max={MAX_WEEKLY_RECURRENCE_COUNT}
@@ -759,34 +755,19 @@ export function RoomReservationGantt({
 								/>
 							</label>
 							<div className="flex flex-wrap justify-end gap-2">
-								<Button type="button" variant="outline" onClick={cancelPending}>Cancel</Button>
-								<Button type="submit" disabled={!title.trim()}>Confirm reservation</Button>
+								<Button type="button" variant="outline" onClick={cancelPending}>{content.confirmDialog.cancelAction}</Button>
+								<Button type="submit" disabled={!title.trim()}>{content.confirmDialog.confirmAction}</Button>
 							</div>
 						</form>
 					</div>
 				</div>
 			)}
-			<AlertDialog open={Boolean(deleteTarget)} onOpenChange={open => !open && setDeleteTarget(null)}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Cancel reservation?</AlertDialogTitle>
-						<AlertDialogDescription>
-							{deleteTarget?.seriesId
-								? "Cancel this occurrence only, or remove the full weekly series."
-								: "This removes your reservation from the room schedule."}
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Keep reservation</AlertDialogCancel>
-						{deleteTarget?.seriesId && (
-							<AlertDialogAction onClick={() => deleteReservation("series")}>Cancel series</AlertDialogAction>
-						)}
-						<AlertDialogAction onClick={() => deleteReservation("occurrence")}>
-							{deleteTarget?.seriesId ? "Cancel occurrence" : "Cancel reservation"}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			<DeleteReservationDialog
+				content={content}
+				onDelete={deleteReservation}
+				onOpenChange={open => !open && setDeleteTarget(null)}
+				reservation={deleteTarget}
+			/>
 		</div>
 	);
 }

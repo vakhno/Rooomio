@@ -23,6 +23,9 @@ export {
 	validateReservationInput
 } from "./reservation-rules";
 export type {
+	ReservationStore,
+} from "./lib/init-socket-events";
+export type {
 	ReservationAck,
 	ReservationCommitPayload,
 	ReservationDeletePayload,
