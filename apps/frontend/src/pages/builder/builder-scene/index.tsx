@@ -1,5 +1,7 @@
 import type { PointerEvent, ReactNode, RefObject } from "react";
 
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
+
 type BuilderSceneProps = {
 	canvasRef: RefObject<HTMLCanvasElement | null>;
 	children: ReactNode;
@@ -21,12 +23,14 @@ export function BuilderScene({
 	onPointerMove,
 	onPointerUp
 }: BuilderSceneProps) {
+	const content = DICTIONARY[DEFAULT_LOCALE].pages.builder;
+
 	return (
 		<div className="relative h-full overflow-hidden overscroll-contain rounded-[3px] border-2 border-border bg-shade-1 [box-shadow:4px_4px_0_var(--border)]">
 			<canvas
 				ref={canvasRef}
 				role="application"
-				aria-label="Overhead floor builder"
+				aria-label={content.sceneLabel}
 				className={`block size-full touch-none overscroll-contain ${cursorClass}`}
 				onPointerDown={onPointerDown}
 				onPointerMove={onPointerMove}

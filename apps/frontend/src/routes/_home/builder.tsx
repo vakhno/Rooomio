@@ -1,7 +1,10 @@
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { ROUTES } from "@shared/routes/constants";
 import { createFileRoute } from "@tanstack/react-router";
 
 import BuilderPage from "@/pages/builder";
+
+const content = DICTIONARY[DEFAULT_LOCALE];
 
 const parseFloor = (value: unknown) => {
 	const floor = typeof value === "number" ? value : typeof value === "string" ? Number.parseInt(value, 10) : Number.NaN;
@@ -13,8 +16,8 @@ export const Route = createFileRoute("/_home/builder")({
 	component: Builder,
 	head: () => ({
 		meta: [
-			{ title: `Builder | Roomioo` },
-			{ name: "description", content: "Build isometric coworking floors and rooms." }
+			{ title: `${content.seo.routeNames.builder} | ${content.pages.home.title}` },
+			{ name: "description", content: content.seo.routes.builder.description }
 		],
 		links: [
 			{ rel: "canonical", href: `${(import.meta.env.VITE_APP_URL ?? "").replace(/\/$/, "")}${ROUTES.BUILDER.path}` },

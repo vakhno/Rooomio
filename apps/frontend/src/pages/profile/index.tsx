@@ -1,12 +1,14 @@
 import { Button } from "@shared/design-system/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@shared/design-system/card";
 import { Skeleton } from "@shared/design-system/skeleton";
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useGetSession } from "@shared/queries";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowUpRight, Building2, CalendarDays, Mail } from "lucide-react";
+import { ArrowUpRight, Building2, CalendarDays, Mail, User } from "lucide-react";
 
 export default function ProfilePage() {
 	const apiBaseUrl = import.meta.env.VITE_API_URL;
+	const content = DICTIONARY[DEFAULT_LOCALE].pages.profile;
 	const { data: session, isLoading } = useGetSession({ apiBaseUrl });
 
 	const user = session?.user;
@@ -18,10 +20,10 @@ export default function ProfilePage() {
 			<Card>
 				<CardHeader className="space-y-1">
 					<CardTitle className="text-2xl font-extrabold tracking-normal">
-						Coworking record
+						{content.title}
 					</CardTitle>
 					<CardDescription>
-						Your account details from your sign-in provider.
+						{content.description}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
@@ -42,13 +44,13 @@ export default function ProfilePage() {
 										<div className="grid gap-4 sm:grid-cols-[160px_1fr]">
 											<div className="grid place-items-center rounded-[3px] border-2 border-border bg-shade-1 p-4">
 												<div className="grid size-24 place-items-center rounded-[3px] border-2 border-border bg-selected text-2xl font-extrabold text-foreground [box-shadow:3px_3px_0_var(--border)]">
-													{userName ? userName.substring(0, 2).toUpperCase() : "??"}
+													{userName ? userName.substring(0, 2).toUpperCase() : content.avatarFallback}
 												</div>
 											</div>
 											<div className="grid gap-3">
-												<div className="rounded-[3px] border-2 border-border bg-shade-1 p-3">
-													<p className="text-xs font-extrabold text-muted-foreground">NAME</p>
-													<p className="truncate text-lg font-extrabold text-foreground">
+												<div className="flex min-w-0 items-center gap-3 rounded-[3px] border-2 border-border bg-shade-1 p-3">
+													<User className="size-5 shrink-0" />
+													<p className="truncate text-sm font-semibold text-muted-foreground">
 														{userName}
 													</p>
 												</div>
@@ -63,12 +65,12 @@ export default function ProfilePage() {
 											</div>
 										</div>
 										<div className="grid gap-3 rounded-[3px] border-2 border-border bg-shade-1 p-3">
-											<p className="text-xs font-extrabold text-muted-foreground">WORKSPACE LINKS</p>
+											<p className="text-xs font-extrabold text-muted-foreground">{content.workspaceLinksLabel}</p>
 											<Button variant="secondary" className="justify-between gap-2" asChild>
 												<Link to="/reservations">
 													<span className="inline-flex items-center gap-2">
 														<CalendarDays className="size-4" />
-														My reservations
+														{content.reservationsAction}
 													</span>
 													<ArrowUpRight className="size-4" />
 												</Link>
@@ -77,7 +79,7 @@ export default function ProfilePage() {
 												<Link to="/my-buildings">
 													<span className="inline-flex items-center gap-2">
 														<Building2 className="size-4" />
-														My buildings
+														{content.buildingsAction}
 													</span>
 													<ArrowUpRight className="size-4" />
 												</Link>
@@ -87,17 +89,9 @@ export default function ProfilePage() {
 								)
 							: (
 									<p className="text-sm text-muted-foreground">
-										No session found. If you expected to see your profile, try signing in again.
+										{content.noSession}
 									</p>
 								)}
-					<div className="flex flex-wrap gap-2 pt-2">
-						<Button variant="outline" size="sm" asChild>
-							<Link to="/">
-								<ArrowLeft className="size-4" />
-								Back to booking overview
-							</Link>
-						</Button>
-					</div>
 				</CardContent>
 			</Card>
 		</div>
