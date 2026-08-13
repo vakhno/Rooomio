@@ -2,7 +2,7 @@
 version: alpha
 name: Roomioo-coworking-hud
 description: |
-  Roomioo is a coworking booking app for reserving rooms, call tables, meeting spaces, and work spots. It uses a modern operating interface dressed as a 1990s isometric 16-bit management HUD. The shared chrome comes from facility-control panels: squared controls, 1px-2px ink borders, hard offset shadows, compact spacing, crisp focus states, and a small fixed palette of floor, desk, focus, water, and warning colors. Isometric artwork belongs to floor-plan and resource-overview surfaces; menus, forms, dialogs, and navigation stay flat 2D HUD panels for accessibility and speed.
+  Roomioo is a coworking booking app for reserving rooms, meeting spaces, and work spots. It uses a modern operating interface dressed as a 1990s isometric 16-bit management HUD. The shared chrome comes from facility-control panels: squared controls, 1px-2px ink borders, hard offset shadows, compact spacing, crisp focus states, and a small fixed palette of floor, desk, focus, water, and warning colors. Isometric artwork belongs to floor-plan and resource-overview surfaces; menus, forms, dialogs, and navigation stay flat 2D HUD panels for accessibility and speed.
 
 colors:
   background: "#d7caa3"

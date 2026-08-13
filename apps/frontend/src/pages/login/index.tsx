@@ -11,7 +11,7 @@ const LoginPage = () => {
 						COWORKING ACCESS
 					</div>
 					<h1 className="max-w-xl text-4xl font-extrabold leading-tight text-foreground">
-						Book rooms, call tables, and work spots.
+						Book rooms and work spots.
 					</h1>
 					<p className="max-w-lg text-base font-semibold leading-relaxed text-muted-foreground">
 						Sign in to manage coworking bookings from a crisp 16-bit HUD built for quick room,
@@ -41,7 +41,7 @@ const LoginPage = () => {
 					</CardContent>
 					<CardFooter className="flex flex-col gap-4 border-t-2 border-border pt-6">
 						<p className="text-center text-xs text-muted-foreground leading-relaxed">
-							Access keeps rooms, call tables, meetings, work spots, and profile actions behind your account.
+							Access keeps rooms, meetings, work spots, and profile actions behind your account.
 						</p>
 					</CardFooter>
 				</Card>

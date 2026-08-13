@@ -26,6 +26,14 @@ const routeSeo = (name: string, description: string, robots = "index, follow") =
 
 export const DICTIONARY = {
 	en: {
+		pages: {
+			home: {
+				title: "Rooomio",
+				description: "Book coworking rooms, meeting spaces, and work spots from one floor plan.",
+				bookAction: "Book",
+				createAction: "Create",
+			},
+		},
 		toast: {
 			error: {
 				socialAuthentication: {
