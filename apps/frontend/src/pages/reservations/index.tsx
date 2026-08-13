@@ -1,25 +1,17 @@
 import type { ReservationEndingSoonPayload, RoomReservationWire } from "@shared/sockets/contracts";
 import type { Socket } from "socket.io-client";
 
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle
-} from "@shared/design-system/alert-dialog";
-import { Badge } from "@shared/design-system/badge";
 import { Button } from "@shared/design-system/button";
 import { Skeleton } from "@shared/design-system/skeleton";
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useGetSession } from "@shared/queries";
 import { Link } from "@tanstack/react-router";
 import { CalendarDays, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
+
+import { CancelReservationDialog } from "./cancel-reservation-dialog";
 
 const pageSize = 10;
 
@@ -43,10 +35,12 @@ const weekStartIso = (date: Date) => {
 
 function ReservationRow({
 	canCancel,
+	content,
 	onCancel,
 	reservation
 }: {
 	canCancel?: boolean;
+	content: typeof DICTIONARY[typeof DEFAULT_LOCALE]["pages"]["reservations"];
 	onCancel?: (reservation: RoomReservationWire) => void;
 	reservation: RoomReservationWire;
 }) {
@@ -78,7 +72,7 @@ function ReservationRow({
 			{canCancel && onCancel && (
 				<Button type="button" variant="destructive" className="gap-2" onClick={() => onCancel(reservation)}>
 					<Trash2 className="size-4" />
-					Cancel
+					{content.cancelAction}
 				</Button>
 			)}
 		</div>
@@ -87,6 +81,7 @@ function ReservationRow({
 
 export default function ReservationsPage() {
 	const apiBaseUrl = import.meta.env.VITE_API_URL;
+	const content = DICTIONARY[DEFAULT_LOCALE].pages.reservations;
 	const { data: session, isLoading } = useGetSession({ apiBaseUrl });
 	const [reservations, setReservations] = useState<RoomReservationWire[]>([]);
 	const [pastLimit, setPastLimit] = useState(pageSize);
@@ -119,8 +114,8 @@ export default function ReservationsPage() {
 			const currentEnd = new Date(reservation.end);
 			const nextStart = new Date(nextReservation.start);
 
-			toast(`${reservation.roomName} is booked after you`, {
-				description: `${reservation.title} ends at ${formatTime(currentEnd)}. ${nextReservation.title} starts at ${formatTime(nextStart)}.`,
+			toast(`${reservation.roomName} ${content.endingSoonToast.titleSuffix}`, {
+				description: `${reservation.title} ${content.endingSoonToast.endsAt} ${formatTime(currentEnd)}. ${nextReservation.title} ${content.endingSoonToast.startsAt} ${formatTime(nextStart)}.`,
 				duration: Math.max(5_000, notifyBeforeMinutes * 1_000)
 			});
 		});
@@ -129,7 +124,13 @@ export default function ReservationsPage() {
 			socket.disconnect();
 			socketRef.current = null;
 		};
-	}, [apiBaseUrl, userId]);
+	}, [
+		apiBaseUrl,
+		content.endingSoonToast.endsAt,
+		content.endingSoonToast.startsAt,
+		content.endingSoonToast.titleSuffix,
+		userId
+	]);
 
 	const { past, upcoming } = useMemo(() => {
 		const now = new Date();
@@ -155,7 +156,7 @@ export default function ReservationsPage() {
 			scope
 		});
 		setCancelTarget(null);
-		toast.success(scope === "series" ? "Reservation series canceled." : "Reservation canceled.");
+		toast.success(scope === "series" ? content.cancelSeriesSuccess : content.cancelSuccess);
 	};
 
 	if (isLoading)
@@ -165,57 +166,41 @@ export default function ReservationsPage() {
 		<div className="px-4 pb-8">
 			<div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[3px] border-2 border-border bg-card p-4 [box-shadow:4px_4px_0_var(--border)]">
 				<div>
-					<h1 className="text-xl font-extrabold text-foreground">My reservations</h1>
-					<p className="text-sm font-semibold text-muted-foreground">All times are shown in your browser timezone.</p>
+					<h1 className="text-xl font-extrabold text-foreground">{content.title}</h1>
+					<p className="text-sm font-semibold text-muted-foreground">{content.timezoneNote}</p>
 				</div>
-				<Badge>
-					<CalendarDays className="mr-1 size-4" />
-					{upcoming.length}
-					{" "}
-					upcoming
-				</Badge>
+				<Button asChild>
+					<Link to="/buildings">
+						<CalendarDays className="size-4" />
+						{content.bookRoomAction}
+					</Link>
+				</Button>
 			</div>
 
 			<section className="mb-5 overflow-hidden rounded-[3px] border-2 border-border bg-shade-1 [box-shadow:3px_3px_0_var(--border)]">
-				<div className="border-b-2 border-border bg-selected p-3 text-sm font-extrabold">Upcoming</div>
+				<div className="border-b-2 border-border bg-selected p-3 text-sm font-extrabold">{content.upcomingHeading}</div>
 				{upcoming.length
-					? upcoming.map(reservation => <ReservationRow key={reservation.id} canCancel reservation={reservation} onCancel={setCancelTarget} />)
-					: <p className="p-4 text-sm font-semibold text-muted-foreground">No upcoming reservations.</p>}
+					? upcoming.map(reservation => <ReservationRow key={reservation.id} canCancel content={content} reservation={reservation} onCancel={setCancelTarget} />)
+					: <p className="p-4 text-center text-sm font-semibold text-muted-foreground">{content.noUpcoming}</p>}
 			</section>
 
 			<section className="overflow-hidden rounded-[3px] border-2 border-border bg-shade-1 [box-shadow:3px_3px_0_var(--border)]">
-				<div className="border-b-2 border-border bg-card p-3 text-sm font-extrabold">Past</div>
+				<div className="border-b-2 border-border bg-card p-3 text-sm font-extrabold">{content.pastHeading}</div>
 				{past.length
-					? past.slice(0, pastLimit).map(reservation => <ReservationRow key={reservation.id} reservation={reservation} />)
-					: <p className="p-4 text-sm font-semibold text-muted-foreground">No past reservations.</p>}
+					? past.slice(0, pastLimit).map(reservation => <ReservationRow key={reservation.id} content={content} reservation={reservation} />)
+					: <p className="p-4 text-center text-sm font-semibold text-muted-foreground">{content.noPast}</p>}
 				{past.length > pastLimit && (
 					<div className="border-t-2 border-border p-3">
-						<Button type="button" variant="outline" onClick={() => setPastLimit(current => current + pageSize)}>Load more</Button>
+						<Button type="button" variant="outline" onClick={() => setPastLimit(current => current + pageSize)}>{content.loadMoreAction}</Button>
 					</div>
 				)}
 			</section>
 
-			<AlertDialog open={Boolean(cancelTarget)} onOpenChange={open => !open && setCancelTarget(null)}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Cancel reservation?</AlertDialogTitle>
-						<AlertDialogDescription>
-							{cancelTarget?.seriesId
-								? "Cancel this occurrence only, or remove the full weekly series."
-								: "Only your own reservations can be canceled."}
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Keep reservation</AlertDialogCancel>
-						{cancelTarget?.seriesId && (
-							<AlertDialogAction onClick={() => cancelReservation("series")}>Cancel series</AlertDialogAction>
-						)}
-						<AlertDialogAction onClick={() => cancelReservation("occurrence")}>
-							{cancelTarget?.seriesId ? "Cancel occurrence" : "Cancel reservation"}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			<CancelReservationDialog
+				onCancel={cancelReservation}
+				onOpenChange={open => !open && setCancelTarget(null)}
+				reservation={cancelTarget}
+			/>
 		</div>
 	);
 }

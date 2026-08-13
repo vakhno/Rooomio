@@ -1,14 +1,9 @@
 import type { FloorLayout, FloorWall } from "@shared/zod-schemas";
 import type { PointerEvent } from "react";
 
-import { Badge } from "@shared/design-system/badge";
-import { Button } from "@shared/design-system/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@shared/design-system/dialog";
-import { Input } from "@shared/design-system/input";
-import { Switch } from "@shared/design-system/switch";
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useCurrentFloorPlan, useMyBuildings, useSaveCurrentFloorPlan } from "@shared/queries";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Save } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import floorLightCarpetSrc from "@/assets/builder/floor-light-carpet.png";
@@ -21,6 +16,8 @@ import type { DoorStyle, FloorMaterial, Tool, WallMaterial } from "./builder-typ
 import { BuildTools } from "./build-tools";
 import { BuilderScene } from "./builder-scene";
 import { MainTools } from "./main-tools";
+import { RoomInfoDialog } from "./room-info-dialog";
+import { SaveFloorPlanDialog } from "./save-floor-plan-dialog";
 import { SecondaryTools } from "./secondary-tools";
 
 type Cell = [number, number];
@@ -603,7 +600,7 @@ function pointInPolygon(point: Point, polygon: Point[]) {
 	return inside;
 }
 
-function buildRoom(layout: FloorLayout, start: Cell, end: Cell, roomId: string) {
+function buildRoom(layout: FloorLayout, start: Cell, end: Cell, roomId: string, roomName: string, roomFloor: string) {
 	const bounds = roomBounds(start, end);
 
 	if (!canBuildRoom(layout, start, end))
@@ -639,8 +636,8 @@ function buildRoom(layout: FloorLayout, start: Cell, end: Cell, roomId: string) 
 			...(layout.rooms ?? []),
 			{
 				id: roomId,
-				name: `Room ${(layout.rooms ?? []).length + 1}`,
-				floor: "Main floor",
+				name: roomName,
+				floor: roomFloor,
 				capacity: 4,
 				schedule: defaultRoomSchedule(),
 				bounds: {
@@ -731,6 +728,7 @@ function canResizeFloorWithoutCroppingRooms(layout: FloorLayout, cols: number, r
 
 export default function BuilderPage() {
 	const apiBaseUrl = import.meta.env.VITE_API_URL;
+	const content = DICTIONARY[DEFAULT_LOCALE].pages.builder;
 	const navigate = useNavigate();
 	const { buildingId = "", floor: requestedFloor, mode } = useSearch({ from: "/_home/builder" });
 	const isNewFloor = mode === "new";
@@ -757,7 +755,7 @@ export default function BuilderPage() {
 	const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
 	const [isRoomPanelOpen, setIsRoomPanelOpen] = useState(false);
 	const [isSavePanelOpen, setIsSavePanelOpen] = useState(false);
-	const [floorPlanName, setFloorPlanName] = useState("Floor");
+	const [floorPlanName, setFloorPlanName] = useState<string>(content.defaultFloorName);
 	const [floorNumber, setFloorNumber] = useState(1);
 	const [roomDrag, setRoomDrag] = useState<RoomDrag | null>(null);
 	const [panStart, setPanStart] = useState<{ camera: { x: number; y: number }; x: number; y: number } | null>(null);
@@ -810,7 +808,7 @@ export default function BuilderPage() {
 			const nextFloor = Math.min(maxFloorNumber, Math.max(1, requestedFloor ?? 1));
 
 			setLayout(DEFAULT_LAYOUT);
-			setFloorPlanName("Floor");
+			setFloorPlanName(content.defaultFloorName);
 			setFloorNumber(nextFloor);
 			fitView(DEFAULT_LAYOUT);
 			hasCenteredInitialViewRef.current = true;
@@ -824,7 +822,7 @@ export default function BuilderPage() {
 			fitView(currentFloorPlan.data.structure);
 			hasCenteredInitialViewRef.current = true;
 		}
-	}, [currentFloorPlan.data, fitView, isNewFloor, maxFloorNumber, requestedFloor]);
+	}, [content.defaultFloorName, currentFloorPlan.data, fitView, isNewFloor, maxFloorNumber, requestedFloor]);
 
 	useEffect(() => {
 		if (selectedBuilding)
@@ -1249,7 +1247,14 @@ export default function BuilderPage() {
 
 		if (dragStart && dragEnd && canBuildRoom(layout, dragStart, dragEnd)) {
 			const roomId = createRoomId();
-			applyLayout(current => buildRoom(current, dragStart, dragEnd, roomId));
+			applyLayout(current => buildRoom(
+				current,
+				dragStart,
+				dragEnd,
+				roomId,
+				`${content.defaultRoomNamePrefix} ${(current.rooms ?? []).length + 1}`,
+				content.defaultRoomFloor
+			));
 			setSelectedRoomId(roomId);
 			setIsRoomPanelOpen(true);
 		}
@@ -1338,7 +1343,7 @@ export default function BuilderPage() {
 		const nextFloorNumber = Math.min(maxFloorNumber, Math.max(1, floorNumber));
 		saveFloorPlan.mutate({
 			floor: nextFloorNumber,
-			name: floorPlanName || "Floor",
+			name: floorPlanName || content.defaultFloorName,
 			structure: {
 				...layout,
 				rooms: rooms.map(room => ({ ...room, floor: String(nextFloorNumber) }))
@@ -1383,198 +1388,35 @@ export default function BuilderPage() {
 					/>
 				</div>
 
-				<Dialog open={isRoomPanelOpen} onOpenChange={setIsRoomPanelOpen}>
-					<DialogContent className="sm:max-w-2xl">
-						<DialogHeader>
-							<DialogTitle>{selectedRoom ? "Room info" : "No available rooms"}</DialogTitle>
-							<DialogDescription>
-								{selectedRoom ? "Edit room details and weekly working hours." : "Create a room to edit room details and working hours."}
-							</DialogDescription>
-						</DialogHeader>
-
-						{selectedRoom && (
-							<div className="flex flex-col gap-3 overflow-y-auto">
-								<div className="flex flex-wrap gap-2">
-									<Badge>
-										Office time:
-										{" "}
-										{OFFICE_TIME_ZONE}
-									</Badge>
-									{isDifferentTimeZone && (
-										<Badge>
-											Your time:
-											{" "}
-											{userTimeZone}
-										</Badge>
-									)}
-								</div>
-
-								<div className="flex items-center justify-between gap-2">
-									<label className="text-xs font-extrabold text-muted-foreground" htmlFor="builder-room-select">
-										Room
-									</label>
-									<Badge>{rooms.length}</Badge>
-								</div>
-								<select
-									id="builder-room-select"
-									className="h-10 rounded-[2px] border-2 border-border bg-shade-0 px-3 py-2 text-sm font-bold text-foreground shadow-[inset_2px_2px_0_var(--muted)] outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-border"
-									value={selectedRoom.id}
-									onChange={event => setSelectedRoomId(event.currentTarget.value)}
-								>
-									{rooms.map(room => (
-										<option key={room.id} value={room.id}>
-											{room.name}
-										</option>
-									))}
-								</select>
-
-								<div className="grid gap-2 sm:grid-cols-3">
-									<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-										Name
-										<Input value={selectedRoom.name} onChange={event => updateSelectedRoom({ name: event.currentTarget.value || "Room" })} />
-									</label>
-									<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-										Floor
-										<Input value={selectedRoom.floor} onChange={event => updateSelectedRoom({ floor: event.currentTarget.value || "Main floor" })} />
-									</label>
-									<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-										Capacity
-										<Input
-											min={1}
-											type="number"
-											value={selectedRoom.capacity}
-											onChange={event => updateSelectedRoom({ capacity: Math.max(1, Number.parseInt(event.currentTarget.value, 10) || 1) })}
-										/>
-									</label>
-								</div>
-
-								<div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
-									{normalizeRoomSchedule(selectedRoom.schedule).map(day => (
-										<div key={day.day} className="grid grid-cols-[5.5rem_5.5rem_1fr_1fr] items-end gap-2">
-											<div className="pb-2 text-xs font-extrabold text-muted-foreground capitalize">
-												{day.day}
-											</div>
-											<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-												Day off
-												<Switch checked={day.dayOff} onCheckedChange={checked => updateSelectedRoomSchedule(day.day, { dayOff: checked })} />
-											</label>
-											<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-												Opens
-												<Input disabled={day.dayOff} inputMode="numeric" maxLength={5} pattern={TIME_PATTERN} placeholder="09:00" value={day.opensAt} onChange={event => updateSelectedRoomSchedule(day.day, { opensAt: event.currentTarget.value || "09:00" })} />
-											</label>
-											<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-												Closes
-												<Input disabled={day.dayOff} inputMode="numeric" maxLength={5} pattern={TIME_PATTERN} placeholder="19:00" value={day.closesAt} onChange={event => updateSelectedRoomSchedule(day.day, { closesAt: event.currentTarget.value || "19:00" })} />
-											</label>
-										</div>
-									))}
-								</div>
-							</div>
-						)}
-					</DialogContent>
-				</Dialog>
-
-				<Dialog open={isSavePanelOpen} onOpenChange={setIsSavePanelOpen}>
-					<DialogContent className="sm:max-w-4xl">
-						<DialogHeader>
-							<DialogTitle>Review floor plan</DialogTitle>
-							<DialogDescription>Edit floor and room details before saving.</DialogDescription>
-						</DialogHeader>
-
-						<div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1">
-							<div className="rounded-[3px] border-2 border-border bg-shade-0 p-3">
-								<div className="mb-3 flex items-center justify-between gap-2">
-									<div className="text-sm font-extrabold text-foreground">Floor</div>
-									<Badge>{currentFloorPlan.data?.id ?? "New"}</Badge>
-								</div>
-
-								<div className="grid gap-2 sm:grid-cols-2">
-									<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-										Name
-										<Input value={floorPlanName} onChange={event => setFloorPlanName(event.currentTarget.value)} />
-									</label>
-									<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-										Floor
-										<Input
-											min={1}
-											max={maxFloorNumber}
-											type="number"
-											value={floorNumber}
-											onChange={event => setFloorNumber(Math.min(maxFloorNumber, Math.max(1, Number.parseInt(event.currentTarget.value, 10) || 1)))}
-										/>
-									</label>
-								</div>
-							</div>
-
-							{rooms.length === 0 && (
-								<div className="rounded-[3px] border-2 border-border bg-shade-0 p-3 text-sm font-bold text-muted-foreground">
-									No available rooms
-								</div>
-							)}
-
-							{rooms.map(room => (
-								<div key={room.id} className="rounded-[3px] border-2 border-border bg-shade-0 p-3">
-									<div className="mb-3 flex items-center justify-between gap-2">
-										<div className="text-sm font-extrabold text-foreground">{room.name}</div>
-										<Badge>{room.id}</Badge>
-									</div>
-
-									<div className="grid gap-2 sm:grid-cols-2">
-										<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-											Name
-											<Input value={room.name} onChange={event => updateRoom(room.id, { name: event.currentTarget.value || "Room" })} />
-										</label>
-										<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-											Capacity
-											<Input
-												min={1}
-												type="number"
-												value={room.capacity}
-												onChange={event => updateRoom(room.id, { capacity: Math.max(1, Number.parseInt(event.currentTarget.value, 10) || 1) })}
-											/>
-										</label>
-									</div>
-
-									<div className="mt-3 grid gap-2">
-										{normalizeRoomSchedule(room.schedule).map(day => (
-											<div key={day.day} className="grid grid-cols-[5.5rem_5.5rem_1fr_1fr] items-end gap-2">
-												<div className="pb-2 text-xs font-extrabold text-muted-foreground capitalize">
-													{day.day}
-												</div>
-												<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-													Day off
-													<Switch checked={day.dayOff} onCheckedChange={checked => updateRoomSchedule(room.id, day.day, { dayOff: checked })} />
-												</label>
-												<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-													Opens
-													<Input disabled={day.dayOff} inputMode="numeric" maxLength={5} pattern={TIME_PATTERN} placeholder="09:00" value={day.opensAt} onChange={event => updateRoomSchedule(room.id, day.day, { opensAt: event.currentTarget.value || "09:00" })} />
-												</label>
-												<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-													Closes
-													<Input disabled={day.dayOff} inputMode="numeric" maxLength={5} pattern={TIME_PATTERN} placeholder="19:00" value={day.closesAt} onChange={event => updateRoomSchedule(room.id, day.day, { closesAt: event.currentTarget.value || "19:00" })} />
-												</label>
-											</div>
-										))}
-									</div>
-								</div>
-							))}
-
-							<div className="flex justify-end gap-2">
-								<Button variant="outline" size="sm" onClick={() => setIsSavePanelOpen(false)}>
-									Cancel
-								</Button>
-								<Button
-									size="sm"
-									onClick={saveReviewedFloorPlan}
-									disabled={!buildingId || saveFloorPlan.isPending}
-								>
-									<Save className="size-4" />
-									Save
-								</Button>
-							</div>
-						</div>
-					</DialogContent>
-				</Dialog>
+				<RoomInfoDialog
+					isDifferentTimeZone={isDifferentTimeZone}
+					onOpenChange={setIsRoomPanelOpen}
+					open={isRoomPanelOpen}
+					officeTimeZone={OFFICE_TIME_ZONE}
+					rooms={rooms}
+					selectedRoom={selectedRoom ? { ...selectedRoom, schedule: normalizeRoomSchedule(selectedRoom.schedule) } : null}
+					setSelectedRoomId={setSelectedRoomId}
+					timePattern={TIME_PATTERN}
+					updateSelectedRoom={updateSelectedRoom}
+					updateSelectedRoomSchedule={updateSelectedRoomSchedule}
+					userTimeZone={userTimeZone}
+				/>
+				<SaveFloorPlanDialog
+					canSave={Boolean(buildingId) && !saveFloorPlan.isPending}
+					currentFloorPlanId={currentFloorPlan.data?.id}
+					floorNumber={floorNumber}
+					floorPlanName={floorPlanName}
+					maxFloorNumber={maxFloorNumber}
+					onOpenChange={setIsSavePanelOpen}
+					onSave={saveReviewedFloorPlan}
+					open={isSavePanelOpen}
+					rooms={rooms.map(room => ({ ...room, schedule: normalizeRoomSchedule(room.schedule) }))}
+					setFloorNumber={setFloorNumber}
+					setFloorPlanName={setFloorPlanName}
+					timePattern={TIME_PATTERN}
+					updateRoom={updateRoom}
+					updateRoomSchedule={updateRoomSchedule}
+				/>
 
 				<SecondaryTools
 					onResetView={resetView}

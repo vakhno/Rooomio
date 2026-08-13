@@ -8,6 +8,7 @@ import {
 } from "@shared/design-system/dialog";
 import { Separator } from "@shared/design-system/separator";
 import { Skeleton } from "@shared/design-system/skeleton";
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useGetSession, useLogout } from "@shared/queries";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Building2, CalendarDays, LogOut, Menu, Moon, Sun, User } from "lucide-react";
@@ -30,6 +31,8 @@ function getInitials(name: string) {
 
 const Header = ({ className = "" }: HeaderProps) => {
 	const { theme, toggleTheme } = useTheme();
+	const content = DICTIONARY[DEFAULT_LOCALE].components.header;
+	const appName = DICTIONARY[DEFAULT_LOCALE].pages.home.title;
 	const apiBaseUrl = import.meta.env.VITE_API_URL;
 	const { data: session, isLoading } = useGetSession({ apiBaseUrl });
 	const logoutMutation = useLogout({ apiBaseUrl });
@@ -47,7 +50,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 
 	const user = session?.user;
 	const avatarUrl = user?.image ?? (user as { picture?: string } | null)?.picture;
-	const userName = user?.name || user?.email?.split("@")[0] || "User";
+	const userName = user?.name || user?.email?.split("@")[0] || content.userFallback;
 	const userEmail = user?.email || "";
 
 	return (
@@ -61,15 +64,12 @@ const Header = ({ className = "" }: HeaderProps) => {
 				</span>
 				<span className="min-w-0">
 					<span className="block truncate text-xl font-extrabold leading-none text-foreground">
-						Roomioo
-					</span>
-					<span className="block truncate text-xs font-extrabold text-muted-foreground">
-						Coworking
+						{appName}
 					</span>
 				</span>
 			</Link>
 			<div className="flex items-center gap-2">
-				<Button onClick={handleToggleTheme} variant="ghost" size="icon" aria-label="Toggle theme">
+				<Button onClick={handleToggleTheme} variant="ghost" size="icon" aria-label={content.toggleThemeLabel}>
 					{theme === "dark" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
 				</Button>
 				{isLoading
@@ -83,7 +83,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 										variant="ghost"
 										size="icon-lg"
 										className="relative overflow-hidden rounded-[2px] p-0"
-										aria-label="User menu"
+										aria-label={content.userMenuLabel}
 										onClick={() => setIsProfileDialogOpen(true)}
 									>
 										{avatarUrl
@@ -103,9 +103,9 @@ const Header = ({ className = "" }: HeaderProps) => {
 									<Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
 										<DialogContent className="sm:max-w-md">
 											<DialogHeader>
-												<DialogTitle>Profile</DialogTitle>
+												<DialogTitle>{content.profileDialog.title}</DialogTitle>
 												<DialogDescription>
-													Account and coworking booking controls.
+													{content.profileDialog.description}
 												</DialogDescription>
 											</DialogHeader>
 											<div className="space-y-5">
@@ -138,7 +138,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 														<Link to="/reservations" onClick={() => setIsProfileDialogOpen(false)}>
 															<span className="inline-flex items-center gap-2">
 																<CalendarDays className="h-4 w-4" />
-																My reservations
+																{content.profileDialog.reservationsAction}
 															</span>
 															<ArrowUpRight className="h-4 w-4" />
 														</Link>
@@ -147,7 +147,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 														<Link to="/my-buildings" onClick={() => setIsProfileDialogOpen(false)}>
 															<span className="inline-flex items-center gap-2">
 																<Building2 className="h-4 w-4" />
-																My buildings
+																{content.profileDialog.buildingsAction}
 															</span>
 															<ArrowUpRight className="h-4 w-4" />
 														</Link>
@@ -156,7 +156,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 														<Link to="/profile" onClick={() => setIsProfileDialogOpen(false)}>
 															<span className="inline-flex items-center gap-2">
 																<User className="h-4 w-4" />
-																Open profile
+																{content.profileDialog.profileAction}
 															</span>
 															<ArrowUpRight className="h-4 w-4" />
 														</Link>
@@ -168,7 +168,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 														disabled={logoutMutation.isPending}
 													>
 														<LogOut className="h-4 w-4" />
-														{logoutMutation.isPending ? "Signing out..." : "Log out"}
+														{logoutMutation.isPending ? content.profileDialog.logoutPending : content.profileDialog.logoutAction}
 													</Button>
 												</div>
 											</div>
@@ -178,13 +178,13 @@ const Header = ({ className = "" }: HeaderProps) => {
 							)
 						: (
 								<Button variant="secondary" asChild>
-									<Link to="/auth/login">Sign in</Link>
+									<Link to="/auth/login">{content.signInAction}</Link>
 								</Button>
 							)}
 				<Button
 					variant="ghost"
 					size="icon"
-					aria-label="Menu"
+					aria-label={content.menuDialog.triggerLabel}
 					onClick={() => setIsMenuDialogOpen(true)}
 				>
 					<Menu className="h-5 w-5" />
@@ -193,10 +193,10 @@ const Header = ({ className = "" }: HeaderProps) => {
 					<DialogContent className="sm:max-w-sm">
 						<DialogHeader>
 							<DialogTitle>
-								Command menu
+								{content.menuDialog.title}
 							</DialogTitle>
 							<DialogDescription>
-								Jump between coworking booking areas.
+								{content.menuDialog.description}
 							</DialogDescription>
 						</DialogHeader>
 						<nav className="mx-auto flex w-full flex-col gap-3">
@@ -206,7 +206,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 								onClick={() => setIsMenuDialogOpen(false)}
 							>
 								<Link to="/" className="flex w-full items-center">
-									Home
+									{content.menuDialog.homeAction}
 									<ArrowUpRight className="h-4 w-4" />
 								</Link>
 							</Button>
@@ -218,7 +218,7 @@ const Header = ({ className = "" }: HeaderProps) => {
 									onClick={() => setIsMenuDialogOpen(false)}
 								>
 									<Link to="/buildings" className="flex w-full items-center">
-										Buildings
+										{content.menuDialog.buildingsAction}
 										<ArrowUpRight className="h-4 w-4" />
 									</Link>
 								</Button>

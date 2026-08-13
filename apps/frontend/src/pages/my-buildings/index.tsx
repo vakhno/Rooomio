@@ -1,71 +1,23 @@
-import type { Building, FloorPlan } from "@shared/zod-schemas";
-import type { FormEvent } from "react";
+import type { Building } from "@shared/zod-schemas";
 
-import { Badge } from "@shared/design-system/badge";
 import { Button } from "@shared/design-system/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@shared/design-system/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@shared/design-system/dialog";
-import { Input } from "@shared/design-system/input";
 import { Skeleton } from "@shared/design-system/skeleton";
-import { useBuildingFloorPlans, useCreateBuilding, useMyBuildings } from "@shared/queries";
-import { Link } from "@tanstack/react-router";
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
+import { useMyBuildings } from "@shared/queries";
 import { Building2, Layers3, Plus } from "lucide-react";
 import { useState } from "react";
 
-const FloorList = ({ floors, isLoading }: { floors: FloorPlan[]; isLoading: boolean }) => {
-	if (isLoading)
-		return <Skeleton className="h-16 w-full rounded-[3px]" />;
-
-	if (floors.length === 0)
-		return <p className="text-sm font-semibold text-muted-foreground">No available floors</p>;
-
-	return (
-		<div className="grid gap-2">
-			{floors.map(floor => (
-				<div key={floor.id} className="rounded-[3px] border-2 border-border bg-shade-1 p-3">
-					<div className="flex items-center justify-between gap-2">
-						<p className="text-sm font-extrabold text-foreground">
-							Floor
-							{" "}
-							{floor.floor}
-						</p>
-						<Badge>
-							{floor.structure.rooms?.length ?? 0}
-							{" "}
-							rooms
-						</Badge>
-					</div>
-				</div>
-			))}
-		</div>
-	);
-};
+import { CreateBuildingDialog } from "./create-building-dialog";
+import { MyBuildingDetailsDialog } from "./my-building-details-dialog";
 
 export default function MyBuildingsPage() {
 	const apiBaseUrl = import.meta.env.VITE_API_URL;
+	const content = DICTIONARY[DEFAULT_LOCALE].pages.myBuildings;
 	const buildings = useMyBuildings({ apiBaseUrl });
-	const createBuilding = useCreateBuilding({ apiBaseUrl });
 	const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
-	const floorPlans = useBuildingFloorPlans({ apiBaseUrl, buildingId: selectedBuilding?.id ?? "" });
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
-	const [form, setForm] = useState({ address: "", floorCount: 1, name: "" });
 	const myBuildings = buildings.data ?? [];
-	const existingFloors = new Set((floorPlans.data ?? []).map(floor => floor.floor));
-	const nextFloor = selectedBuilding
-		? Array.from({ length: selectedBuilding.floorCount }, (_, index) => index + 1).find(floor => !existingFloors.has(floor))
-		: undefined;
-
-	const handleCreate = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-
-		createBuilding.mutate(form, {
-			onSuccess: (building) => {
-				setForm({ address: "", floorCount: 1, name: "" });
-				setIsCreateOpen(false);
-				setSelectedBuilding(building);
-			}
-		});
-	};
 
 	return (
 		<div className="grid gap-6 px-4 py-8">
@@ -75,13 +27,13 @@ export default function MyBuildingsPage() {
 						<div>
 							<CardTitle className="flex items-center gap-2 text-2xl font-extrabold tracking-normal">
 								<Building2 className="size-6" />
-								My buildings
+								{content.title}
 							</CardTitle>
-							<CardDescription>Manage your buildings and create floors.</CardDescription>
+							<CardDescription>{content.description}</CardDescription>
 						</div>
 						<Button size="sm" onClick={() => setIsCreateOpen(true)}>
 							<Plus className="size-4" />
-							Create building
+							{content.createBuildingAction}
 						</Button>
 					</div>
 				</CardHeader>
@@ -106,7 +58,7 @@ export default function MyBuildingsPage() {
 												<p className="mt-3 text-xs font-extrabold text-muted-foreground">
 													{building.floorCount}
 													{" "}
-													floors
+													{content.floorsLabel}
 												</p>
 											</button>
 										))}
@@ -114,85 +66,24 @@ export default function MyBuildingsPage() {
 								)
 							: (
 									<div className="rounded-[3px] border-2 border-border bg-shade-1 p-4">
-										<p className="text-sm font-extrabold text-foreground">No buildings created yet.</p>
-										<p className="text-sm font-semibold text-muted-foreground">Create a building before adding floors.</p>
+										<p className="text-sm font-extrabold text-foreground">{content.noBuildingsTitle}</p>
+										<p className="text-sm font-semibold text-muted-foreground">{content.noBuildingsDescription}</p>
 									</div>
 								)}
 				</CardContent>
 			</Card>
 
-			<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Create building</DialogTitle>
-						<DialogDescription>Add building details before creating floors.</DialogDescription>
-					</DialogHeader>
-
-					<form className="grid gap-3" onSubmit={handleCreate}>
-						<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-							Name
-							<Input value={form.name} onChange={event => setForm(current => ({ ...current, name: event.currentTarget.value }))} required />
-						</label>
-						<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-							Address
-							<Input value={form.address} onChange={event => setForm(current => ({ ...current, address: event.currentTarget.value }))} required />
-						</label>
-						<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-							Floors
-							<Input min={1} type="number" value={form.floorCount} onChange={event => setForm(current => ({ ...current, floorCount: Math.max(1, Number.parseInt(event.currentTarget.value, 10) || 1) }))} required />
-						</label>
-						<Button className="justify-self-end" type="submit" disabled={createBuilding.isPending}>
-							<Plus className="size-4" />
-							Create
-						</Button>
-					</form>
-				</DialogContent>
-			</Dialog>
-
-			<Dialog open={Boolean(selectedBuilding)} onOpenChange={open => !open && setSelectedBuilding(null)}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>{selectedBuilding?.name ?? "Building"}</DialogTitle>
-						<DialogDescription>Building details and floor setup.</DialogDescription>
-					</DialogHeader>
-
-					{selectedBuilding && (
-						<div className="grid gap-3">
-							<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-								Name
-								<Input value={selectedBuilding.name} readOnly />
-							</label>
-							<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-								Address
-								<Input value={selectedBuilding.address} readOnly />
-							</label>
-							<label className="flex flex-col gap-1 text-xs font-extrabold text-muted-foreground">
-								Floors
-								<Input value={selectedBuilding.floorCount} readOnly />
-							</label>
-							<div className="grid gap-2">
-								<p className="text-xs font-extrabold text-muted-foreground">Floors</p>
-								<FloorList floors={floorPlans.data ?? []} isLoading={floorPlans.isLoading} />
-							</div>
-							{nextFloor
-								? (
-										<Button asChild>
-											<Link to="/builder" search={{ buildingId: selectedBuilding.id, floor: nextFloor, mode: "new" }}>
-												<Plus className="size-4" />
-												Create floor
-											</Link>
-										</Button>
-									)
-								: (
-										<Button disabled>
-											<Plus className="size-4" />
-											Create floor
-										</Button>
-									)}
-						</div>
-					)}
-				</DialogContent>
-			</Dialog>
+			<CreateBuildingDialog
+				apiBaseUrl={apiBaseUrl}
+				onCreated={setSelectedBuilding}
+				onOpenChange={setIsCreateOpen}
+				open={isCreateOpen}
+			/>
+			<MyBuildingDetailsDialog
+				apiBaseUrl={apiBaseUrl}
+				building={selectedBuilding}
+				onOpenChange={open => !open && setSelectedBuilding(null)}
+			/>
 		</div>
 	);
 }

@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@shared/design-system/dialog";
+import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 
 import LoginTabs from "@/components/compound/login-tabs";
 
@@ -8,15 +9,17 @@ interface LoginDialogProps {
 }
 
 export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
+	const content = DICTIONARY[DEFAULT_LOCALE].components.loginDialog;
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[400px]">
 				<DialogHeader>
 					<DialogTitle>
-						Welcome
+						{content.title}
 					</DialogTitle>
 					<DialogDescription>
-						Sign in to have access to all features and personal statistic.
+						{content.description}
 					</DialogDescription>
 				</DialogHeader>
 				<LoginTabs />
