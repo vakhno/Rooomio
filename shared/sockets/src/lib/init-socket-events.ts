@@ -33,17 +33,42 @@ type ReservableRoom = {
 type SocketEventsOptions = {
 	getRoom?: (input: { floorId: string; roomId: string }) => Promise<ReservableRoom | null> | ReservableRoom | null;
 	getUserId?: (socket: Socket) => string | null;
+	reservations?: ReservationStore;
 };
 
 const HOLD_TTL_MS = 45_000;
 const holds = new Map<string, RoomReservationHold>();
-const reservations = new Map<string, RoomReservationWire>();
 const notificationTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+export type ReservationStore = {
+	create: (reservations: RoomReservationWire[]) => Promise<void> | void;
+	delete: (ids: string[]) => Promise<void> | void;
+	get: (id: string) => Promise<RoomReservationWire | null> | RoomReservationWire | null;
+	listByOwner: (ownerId: string) => Promise<RoomReservationWire[]> | RoomReservationWire[];
+	listByRoom: (roomId: string) => Promise<RoomReservationWire[]> | RoomReservationWire[];
+	listBySeries: (seriesId: string, ownerId: string) => Promise<RoomReservationWire[]> | RoomReservationWire[];
+};
+
+const memoryReservations = new Map<string, RoomReservationWire>();
+
+const createMemoryReservationStore = (): ReservationStore => ({
+	create: (items) => {
+		for (const reservation of items)
+			memoryReservations.set(reservation.id, reservation);
+	},
+	delete: (ids) => {
+		for (const id of ids)
+			memoryReservations.delete(id);
+	},
+	get: id => memoryReservations.get(id) ?? null,
+	listByOwner: ownerId => [...memoryReservations.values()].filter(item => item.ownerId === ownerId),
+	listByRoom: roomId => [...memoryReservations.values()].filter(item => item.roomId === roomId),
+	listBySeries: (seriesId, ownerId) => [...memoryReservations.values()].filter(item => item.seriesId === seriesId && item.ownerId === ownerId)
+});
 
 const roomChannel = (roomId: string) => `room-reservations:${roomId}`;
 const userChannel = (ownerId: string) => `reservation-owner:${ownerId}`;
 const now = () => Date.now();
-const roomReservations = (roomId: string) => [...reservations.values()].filter(item => item.roomId === roomId);
 const roomHolds = (roomId: string) => [...holds.values()].filter(item => item.roomId === roomId && item.expiresAt > now());
 
 const toDate = (value: string) => {
@@ -60,8 +85,8 @@ const overlaps = (aStart: string, aEnd: string, bStart: string, bEnd: string) =>
 	return Boolean(startA && endA && startB && endB && reservationRangesOverlap(startA, endA, startB, endB));
 };
 
-const hasReservationOverlap = (roomId: string, start: string, end: string) =>
-	roomReservations(roomId).some(item => overlaps(start, end, item.start, item.end));
+const hasReservationOverlap = async (store: ReservationStore, roomId: string, start: string, end: string) =>
+	(await store.listByRoom(roomId)).some(item => overlaps(start, end, item.start, item.end));
 
 const hasHoldOverlap = (roomId: string, start: string, end: string, holdId: string) =>
 	roomHolds(roomId).some(item => item.id !== holdId && overlaps(start, end, item.start, item.end));
@@ -91,10 +116,10 @@ function clearNotification(reservationId: string) {
 	notificationTimers.delete(reservationId);
 }
 
-function scheduleEndingNotification(io: Server, reservation: RoomReservationWire) {
+async function scheduleEndingNotification(io: Server, store: ReservationStore, reservation: RoomReservationWire) {
 	clearNotification(reservation.id);
 
-	const nextReservation = findNextOccupiedSlot(reservation, reservations.values());
+	const nextReservation = findNextOccupiedSlot(reservation, await store.listByRoom(reservation.roomId));
 
 	if (!nextReservation)
 		return;
@@ -106,9 +131,9 @@ function scheduleEndingNotification(io: Server, reservation: RoomReservationWire
 	if (!Number.isFinite(notifyAt) || reservationEnd <= now())
 		return;
 
-	const timer = setTimeout(() => {
-		const current = reservations.get(reservation.id);
-		const next = current ? findNextOccupiedSlot(current, reservations.values()) : null;
+	const timer = setTimeout(async () => {
+		const current = await store.get(reservation.id);
+		const next = current ? findNextOccupiedSlot(current, await store.listByRoom(current.roomId)) : null;
 
 		notificationTimers.delete(reservation.id);
 
@@ -128,12 +153,13 @@ function scheduleEndingNotification(io: Server, reservation: RoomReservationWire
 	notificationTimers.set(reservation.id, timer);
 }
 
-function rescheduleRoomNotifications(io: Server, roomId: string) {
-	for (const reservation of roomReservations(roomId))
-		scheduleEndingNotification(io, reservation);
+async function rescheduleRoomNotifications(io: Server, store: ReservationStore, roomId: string) {
+	for (const reservation of await store.listByRoom(roomId))
+		await scheduleEndingNotification(io, store, reservation);
 }
 
 export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) => {
+	const reservations = options.reservations ?? createMemoryReservationStore();
 	const cleanupTimer = setInterval(() => {
 		for (const hold of holds.values()) {
 			if (hold.expiresAt <= now())
@@ -153,7 +179,7 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 
 		socket.join(userChannel(ownerId));
 
-		socket.on("reservation:room:join", (payload) => {
+		socket.on("reservation:room:join", async (payload) => {
 			const parsedPayload = ReservationRoomPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success)
@@ -162,12 +188,12 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 			socket.join(roomChannel(parsedPayload.data.roomId));
 			socket.emit("reservation:state", {
 				holds: roomHolds(parsedPayload.data.roomId),
-				reservations: roomReservations(parsedPayload.data.roomId)
+				reservations: await reservations.listByRoom(parsedPayload.data.roomId)
 			});
 		});
 
-		socket.on("reservation:my:list", () => {
-			socket.emit("reservation:my:state", [...reservations.values()].filter(item => item.ownerId === ownerId));
+		socket.on("reservation:my:list", async () => {
+			socket.emit("reservation:my:state", await reservations.listByOwner(ownerId));
 		});
 
 		socket.on("reservation:hold:upsert", async (payload, reply?: (ack: ReservationAck) => void) => {
@@ -199,7 +225,7 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 			}
 
 			if (
-				hasReservationOverlap(input.roomId, input.start, input.end)
+				await hasReservationOverlap(reservations, input.roomId, input.start, input.end)
 				|| hasHoldOverlap(input.roomId, input.start, input.end, input.holdId)
 			) {
 				deleteHold(io, input.holdId);
@@ -263,28 +289,32 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 				return;
 			}
 
-			const validationError = occurrences
-				.map((occurrence) => {
-					const occurrenceLabel = recurrenceCount > 1 ? `Occurrence ${occurrence.index + 1}: ` : "";
-					const error = validateBooking({
-						room,
-						end: occurrence.end,
-						start: occurrence.start,
-						title
-					});
+			let validationError: string | null = null;
 
-					if (error)
-						return `${occurrenceLabel}${error}`;
+			for (const occurrence of occurrences) {
+				const occurrenceLabel = recurrenceCount > 1 ? `Occurrence ${occurrence.index + 1}: ` : "";
+				const error = validateBooking({
+					room,
+					end: occurrence.end,
+					start: occurrence.start,
+					title
+				});
 
-					if (hasReservationOverlap(hold.roomId, occurrence.start, occurrence.end))
-						return `${occurrenceLabel}This time range was already reserved.`;
+				if (error) {
+					validationError = `${occurrenceLabel}${error}`;
+					break;
+				}
 
-					if (hasHoldOverlap(hold.roomId, occurrence.start, occurrence.end, hold.id))
-						return `${occurrenceLabel}This time range is already selected or reserved.`;
+				if (await hasReservationOverlap(reservations, hold.roomId, occurrence.start, occurrence.end)) {
+					validationError = `${occurrenceLabel}This time range was already reserved.`;
+					break;
+				}
 
-					return null;
-				})
-				.find(Boolean);
+				if (hasHoldOverlap(hold.roomId, occurrence.start, occurrence.end, hold.id)) {
+					validationError = `${occurrenceLabel}This time range is already selected or reserved.`;
+					break;
+				}
+			}
 
 			if (validationError) {
 				deleteHold(io, hold.id);
@@ -307,18 +337,17 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 				title
 			}));
 
-			for (const reservation of createdReservations)
-				reservations.set(reservation.id, reservation);
+			await reservations.create(createdReservations);
 
 			deleteHold(io, hold.id);
-			rescheduleRoomNotifications(io, hold.roomId);
+			await rescheduleRoomNotifications(io, reservations, hold.roomId);
 			for (const reservation of createdReservations)
 				io.to(roomChannel(hold.roomId)).emit("reservation:created", reservation);
 			io.emit("reservation:my:changed", ownerId);
 			reply?.({ ok: true });
 		});
 
-		socket.on("reservation:delete", (payload: ReservationDeletePayload, reply?: (ack: ReservationAck) => void) => {
+		socket.on("reservation:delete", async (payload: ReservationDeletePayload, reply?: (ack: ReservationAck) => void) => {
 			const parsedPayload = ReservationDeletePayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
@@ -326,7 +355,7 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 				return;
 			}
 
-			const reservation = reservations.get(parsedPayload.data.id);
+			const reservation = await reservations.get(parsedPayload.data.id);
 
 			if (!reservation || reservation.roomId !== parsedPayload.data.roomId) {
 				reply?.({ error: "Reservation was not found.", ok: false });
@@ -339,16 +368,16 @@ export const initSocketEvents = (io: Server, options: SocketEventsOptions = {}) 
 			}
 
 			const deletedReservations = parsedPayload.data.scope === "series" && reservation.seriesId
-				? [...reservations.values()].filter(item => item.seriesId === reservation.seriesId && item.ownerId === ownerId)
+				? await reservations.listBySeries(reservation.seriesId, ownerId)
 				: [reservation];
 
+			await reservations.delete(deletedReservations.map(item => item.id));
 			for (const item of deletedReservations) {
-				reservations.delete(item.id);
 				clearNotification(item.id);
 				io.to(roomChannel(item.roomId)).emit("reservation:deleted", { id: item.id, roomId: item.roomId });
 			}
 
-			rescheduleRoomNotifications(io, reservation.roomId);
+			await rescheduleRoomNotifications(io, reservations, reservation.roomId);
 			io.emit("reservation:my:changed", reservation.ownerId);
 			reply?.({ ok: true });
 		});

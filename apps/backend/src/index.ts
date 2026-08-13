@@ -1,4 +1,4 @@
-import { getPgPool, initAuthTables, initBuildingTables, initDb, initFloorPlanTables } from "@shared/pg";
+import { getPgPool, initAuthTables, initBuildingTables, initDb, initFloorPlanTables, initReservationTables } from "@shared/pg";
 import { initSocketEvents, initSocketServer } from "@shared/sockets";
 import { FloorLayoutSchema } from "@shared/zod-schemas";
 import cookieParser from "cookie-parser";
@@ -6,6 +6,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 
+import { createPostgresReservationStore } from "./lib/reservation-store.js";
 import { TOKEN_COOKIE_NAME, verifyToken } from "./routes/auth/session.js";
 import { initRoutes } from "./routes/index.js";
 
@@ -25,6 +26,7 @@ await initDb();
 await initAuthTables();
 await initBuildingTables();
 await initFloorPlanTables();
+await initReservationTables();
 
 expressApp.use(helmet());
 expressApp.use(express.json());
@@ -60,6 +62,7 @@ initSocketEvents(io, {
 
 		return token ? verifyToken(decodeURIComponent(token))?.id ?? null : null;
 	},
+	reservations: createPostgresReservationStore(),
 });
 
 server.listen(process.env.PORT);
