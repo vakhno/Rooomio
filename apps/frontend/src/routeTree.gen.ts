@@ -18,6 +18,7 @@ import { Route as HomeReservationsRouteImport } from './routes/_home/reservation
 import { Route as HomeMyBuildingsRouteImport } from './routes/_home/my-buildings'
 import { Route as HomeFloorRouteImport } from './routes/_home/floor'
 import { Route as HomeBuildingsRouteImport } from './routes/_home/buildings'
+import { Route as HomeBuildingFloorsRouteImport } from './routes/_home/building-floors'
 import { Route as HomeBuilderRouteImport } from './routes/_home/builder'
 import { Route as BlankAuthLoginRouteImport } from './routes/_blank/auth/login'
 
@@ -63,6 +64,11 @@ const HomeBuildingsRoute = HomeBuildingsRouteImport.update({
   path: '/buildings',
   getParentRoute: () => HomeRouteRoute,
 } as any)
+const HomeBuildingFloorsRoute = HomeBuildingFloorsRouteImport.update({
+  id: '/building-floors',
+  path: '/building-floors',
+  getParentRoute: () => HomeRouteRoute,
+} as any)
 const HomeBuilderRoute = HomeBuilderRouteImport.update({
   id: '/builder',
   path: '/builder',
@@ -77,6 +83,7 @@ const BlankAuthLoginRoute = BlankAuthLoginRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof HomeIndexRoute
   '/builder': typeof HomeBuilderRoute
+  '/building-floors': typeof HomeBuildingFloorsRoute
   '/buildings': typeof HomeBuildingsRoute
   '/floor': typeof HomeFloorRoute
   '/my-buildings': typeof HomeMyBuildingsRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof HomeIndexRoute
   '/builder': typeof HomeBuilderRoute
+  '/building-floors': typeof HomeBuildingFloorsRoute
   '/buildings': typeof HomeBuildingsRoute
   '/floor': typeof HomeFloorRoute
   '/my-buildings': typeof HomeMyBuildingsRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/_home': typeof HomeRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
   '/_home/builder': typeof HomeBuilderRoute
+  '/_home/building-floors': typeof HomeBuildingFloorsRoute
   '/_home/buildings': typeof HomeBuildingsRoute
   '/_home/floor': typeof HomeFloorRoute
   '/_home/my-buildings': typeof HomeMyBuildingsRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/builder'
+    | '/building-floors'
     | '/buildings'
     | '/floor'
     | '/my-buildings'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/builder'
+    | '/building-floors'
     | '/buildings'
     | '/floor'
     | '/my-buildings'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/_home'
     | '/_public'
     | '/_home/builder'
+    | '/_home/building-floors'
     | '/_home/buildings'
     | '/_home/floor'
     | '/_home/my-buildings'
@@ -215,6 +227,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HomeBuildingsRouteImport
       parentRoute: typeof HomeRouteRoute
     }
+    '/_home/building-floors': {
+      id: '/_home/building-floors'
+      path: '/building-floors'
+      fullPath: '/building-floors'
+      preLoaderRoute: typeof HomeBuildingFloorsRouteImport
+      parentRoute: typeof HomeRouteRoute
+    }
     '/_home/builder': {
       id: '/_home/builder'
       path: '/builder'
@@ -246,6 +265,7 @@ const BlankRouteRouteWithChildren = BlankRouteRoute._addFileChildren(
 
 interface HomeRouteRouteChildren {
   HomeBuilderRoute: typeof HomeBuilderRoute
+  HomeBuildingFloorsRoute: typeof HomeBuildingFloorsRoute
   HomeBuildingsRoute: typeof HomeBuildingsRoute
   HomeFloorRoute: typeof HomeFloorRoute
   HomeMyBuildingsRoute: typeof HomeMyBuildingsRoute
@@ -255,6 +275,7 @@ interface HomeRouteRouteChildren {
 
 const HomeRouteRouteChildren: HomeRouteRouteChildren = {
   HomeBuilderRoute: HomeBuilderRoute,
+  HomeBuildingFloorsRoute: HomeBuildingFloorsRoute,
   HomeBuildingsRoute: HomeBuildingsRoute,
   HomeFloorRoute: HomeFloorRoute,
   HomeMyBuildingsRoute: HomeMyBuildingsRoute,
