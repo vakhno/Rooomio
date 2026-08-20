@@ -25,6 +25,7 @@ export const API_SEGMENT = {
 
 export const ROUTES = {
     HOME: {path: '/'},
+    BUILDING_FLOORS: {path: '/building-floors'},
     BUILDINGS: {path: '/buildings'},
     BUILDER: {path: '/builder'},
     FLOOR: {path: '/floor'},
@@ -40,6 +41,7 @@ export const BLOCKED_DURING_AUTH_LIST = [
 
 export const AUTH_REQUIRED_PAGES_LIST = [
     ROUTES.BUILDINGS.path,
+    ROUTES.BUILDING_FLOORS.path,
     ROUTES.BUILDER.path,
     ROUTES.FLOOR.path,
     ROUTES.MY_BUILDINGS.path,

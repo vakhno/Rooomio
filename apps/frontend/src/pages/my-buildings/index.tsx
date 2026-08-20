@@ -1,21 +1,19 @@
-import type { Building } from "@shared/zod-schemas";
-
 import { Button } from "@shared/design-system/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@shared/design-system/card";
 import { Skeleton } from "@shared/design-system/skeleton";
 import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useMyBuildings } from "@shared/queries";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Building2, Layers3, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { CreateBuildingDialog } from "./create-building-dialog";
-import { MyBuildingDetailsDialog } from "./my-building-details-dialog";
 
 export default function MyBuildingsPage() {
 	const apiBaseUrl = import.meta.env.VITE_API_URL;
 	const content = DICTIONARY[DEFAULT_LOCALE].pages.myBuildings;
+	const navigate = useNavigate();
 	const buildings = useMyBuildings({ apiBaseUrl });
-	const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const myBuildings = buildings.data ?? [];
 
@@ -44,11 +42,11 @@ export default function MyBuildingsPage() {
 							? (
 									<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 										{myBuildings.map(building => (
-											<button
+											<Link
 												key={building.id}
 												className="rounded-[3px] border-2 border-border bg-card p-4 text-left [box-shadow:3px_3px_0_var(--border)] transition-transform hover:-translate-y-0.5"
-												type="button"
-												onClick={() => setSelectedBuilding(building)}
+												to="/building-floors"
+												search={{ buildingId: building.id }}
 											>
 												<div className="flex items-center justify-between gap-3">
 													<p className="text-base font-extrabold text-foreground">{building.name}</p>
@@ -60,7 +58,7 @@ export default function MyBuildingsPage() {
 													{" "}
 													{content.floorsLabel}
 												</p>
-											</button>
+											</Link>
 										))}
 									</div>
 								)
@@ -75,14 +73,9 @@ export default function MyBuildingsPage() {
 
 			<CreateBuildingDialog
 				apiBaseUrl={apiBaseUrl}
-				onCreated={setSelectedBuilding}
+				onCreated={building => void navigate({ to: "/building-floors", search: { buildingId: building.id } })}
 				onOpenChange={setIsCreateOpen}
 				open={isCreateOpen}
-			/>
-			<MyBuildingDetailsDialog
-				apiBaseUrl={apiBaseUrl}
-				building={selectedBuilding}
-				onOpenChange={open => !open && setSelectedBuilding(null)}
 			/>
 		</div>
 	);
