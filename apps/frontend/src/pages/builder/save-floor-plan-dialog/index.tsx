@@ -1,4 +1,4 @@
-import type { FloorLayout } from "@shared/zod-schemas";
+import type { FloorLayout } from "@shared/validations";
 
 import { Badge } from "@shared/design-system/badge";
 import { Button } from "@shared/design-system/button";

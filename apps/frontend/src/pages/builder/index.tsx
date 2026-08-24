@@ -1,4 +1,4 @@
-import type { FloorLayout, FloorWall } from "@shared/zod-schemas";
+import type { FloorLayout, FloorWall } from "@shared/validations";
 import type { PointerEvent } from "react";
 
 import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
