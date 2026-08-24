@@ -9,6 +9,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import floorLightCarpetSrc from "@/assets/builder/floor-light-carpet.png";
 import floorWhiteTileSrc from "@/assets/builder/floor-white-tile.png";
 import floorWoodParquetSrc from "@/assets/builder/floor-wood-parquet.png";
+import officeWallHorizontalSrc from "@/assets/builder/office-wall-horizontal.png";
+import officeWallVerticalSrc from "@/assets/builder/office-wall-vertical.png";
 import { useUserTimeZone } from "@/hooks/use-user-time-zone";
 
 import type { DoorStyle, FloorMaterial, Tool, WallMaterial } from "./builder-types";
@@ -45,7 +47,12 @@ type CanvasPalette = {
 	shade1: string;
 	shade2: string;
 };
-type BuilderImageKey = "floorWood" | "floorTile" | "floorCarpet";
+type BuilderImageKey
+	= | "floorWood"
+		| "floorTile"
+		| "floorCarpet"
+		| "wallHorizontal"
+		| "wallVertical";
 type BuilderImages = Partial<Record<BuilderImageKey, HTMLImageElement>>;
 
 const DEFAULT_LAYOUT: FloorLayout = {
@@ -57,8 +64,8 @@ const DEFAULT_LAYOUT: FloorLayout = {
 	walls: []
 };
 
-const TILE_W = 56;
-const TILE_H = 56;
+const TILE_W = 72;
+const TILE_H = 36;
 const MIN_ROOM_SIDE = 3;
 const MIN_GRID = 3;
 const MAX_GRID = 100;
@@ -67,14 +74,15 @@ const VIEWBOX_H = 560;
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 2;
 const FIT_PADDING = 176;
-const DOOR_OPENINGS = new Set<Opening>(["door", "glass-door", "wood-door"]);
 const OFFICE_TIME_ZONE = "Europe/Kyiv";
 const WEEKDAYS: Array<RoomScheduleDay["day"]> = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const TIME_PATTERN = "[0-2][0-9]:[0-5][0-9]";
 const BUILDER_IMAGE_SOURCES: Record<BuilderImageKey, string> = {
 	floorWood: floorWoodParquetSrc,
 	floorTile: floorWhiteTileSrc,
-	floorCarpet: floorLightCarpetSrc
+	floorCarpet: floorLightCarpetSrc,
+	wallHorizontal: officeWallHorizontalSrc,
+	wallVertical: officeWallVerticalSrc
 };
 
 const cellKey = (col: number, row: number) => `${col},${row}`;
@@ -120,8 +128,8 @@ const normalizeLayout = (layout: FloorLayout): FloorLayout => {
 };
 
 const gridToScreen = (col: number, row: number, originX: number, originY: number, zoom: number) => ({
-	x: originX + col * TILE_W * zoom,
-	y: originY + row * TILE_H * zoom
+	x: originX + (col - row) * (TILE_W / 2) * zoom,
+	y: originY + (col + row) * (TILE_H / 2) * zoom
 });
 
 const getLayoutBounds = (layout: FloorLayout, zoom: number) => {
@@ -161,10 +169,20 @@ const getCenteredCamera = (layout: FloorLayout, zoom: number, viewport: Viewport
 const screenToGrid = (x: number, y: number, originX: number, originY: number, zoom: number) => {
 	const sx = (x - originX) / zoom;
 	const sy = (y - originY) / zoom;
-	const col = Math.floor(sx / TILE_W);
-	const row = Math.floor(sy / TILE_H);
+	const col = Math.floor(sy / TILE_H + sx / TILE_W);
+	const row = Math.floor(sy / TILE_H - sx / TILE_W);
 
 	return { col, row };
+};
+
+const screenToGridLine = (x: number, y: number, originX: number, originY: number, zoom: number) => {
+	const sx = (x - originX) / zoom;
+	const sy = (y - originY) / zoom;
+
+	return {
+		col: Math.round(sy / TILE_H + sx / TILE_W),
+		row: Math.round(sy / TILE_H - sx / TILE_W)
+	};
 };
 
 const roomBounds = (start: Cell, end: Cell) => {
@@ -265,6 +283,7 @@ function setRoomBounds(layout: FloorLayout, roomId: string, bounds: RoomBounds) 
 	const floorMaterials = new Map((layout.floorMaterials ?? []).map(item => [cellKey(item.col, item.row), item]));
 	const roomFloorMaterials = new Map<string, FloorMaterial>();
 	const roomWalls = new Map<string, { wall: FloorWall; wasBorder: boolean }>();
+	const oldBorderKeys = new Set<string>();
 
 	for (let col = room.bounds.minCol; col <= room.bounds.maxCol; col++) {
 		for (let row = room.bounds.minRow; row <= room.bounds.maxRow; row++) {
@@ -274,6 +293,8 @@ function setRoomBounds(layout: FloorLayout, roomId: string, bounds: RoomBounds) 
 			const material = floorMaterials.get(key)?.material;
 			const wall = walls.get(key);
 
+			if (wasBorder)
+				oldBorderKeys.add(relativeKey);
 			if (material)
 				roomFloorMaterials.set(relativeKey, material);
 			if (wall)
@@ -292,8 +313,9 @@ function setRoomBounds(layout: FloorLayout, roomId: string, bounds: RoomBounds) 
 			const border = col === bounds.minCol || col === bounds.maxCol || row === bounds.minRow || row === bounds.maxRow;
 			const movedWall = roomWalls.get(relativeKey);
 			const preservedWall = movedWall && (!movedWall.wasBorder || border) ? movedWall.wall : undefined;
+			const shouldCreateBorderWall = border && !oldBorderKeys.has(relativeKey);
 
-			if (preservedWall || border) {
+			if (preservedWall || shouldCreateBorderWall) {
 				floor.delete(key);
 				walls.set(key, {
 					...(preservedWall ?? {
@@ -336,10 +358,15 @@ function cellPoints(col: number, row: number, originX: number, originY: number, 
 }
 
 function wallCellFaces(col: number, row: number, originX: number, originY: number, zoom: number) {
+	const [top, right, bottom, left] = cellPoints(col, row, originX, originY, zoom);
+	const height = TILE_W * 0.72 * zoom;
+	const lift = (point: Point): Point => ({ x: point.x, y: point.y - height });
+	const topFace = [lift(top), lift(right), lift(bottom), lift(left)];
+
 	return {
-		left: [] as Point[],
-		right: [] as Point[],
-		top: cellPoints(col, row, originX, originY, zoom)
+		left: [lift(left), lift(bottom), bottom, left],
+		right: [lift(bottom), lift(right), right, bottom],
+		top: topFace
 	};
 }
 
@@ -397,26 +424,148 @@ function drawTexturedPolygon(ctx: CanvasRenderingContext2D, points: Point[], ima
 	ctx.restore();
 }
 
-function drawGlassWall(ctx: CanvasRenderingContext2D, topLeft: Point, width: number, height: number, palette: CanvasPalette, stroke: string, strokeWidth: number) {
-	ctx.save();
-	ctx.fillStyle = palette.accent;
-	ctx.globalAlpha = 0.34;
-	ctx.fillRect(topLeft.x, topLeft.y, width, height);
-	ctx.restore();
+function drawElementFace(ctx: CanvasRenderingContext2D, points: Point[], image: HTMLImageElement | undefined, fallback: string, opacity = 1) {
+	const minX = Math.min(...points.map(point => point.x));
+	const maxX = Math.max(...points.map(point => point.x));
+	const minY = Math.min(...points.map(point => point.y));
+	const maxY = Math.max(...points.map(point => point.y));
+	const width = maxX - minX;
+	const height = maxY - minY;
 
-	ctx.strokeStyle = stroke;
-	ctx.lineWidth = strokeWidth;
-	ctx.strokeRect(topLeft.x, topLeft.y, width, height);
+	ctx.save();
+	ctx.globalAlpha = opacity;
+	if (image?.complete && image.naturalWidth > 0) {
+		tracePolygon(ctx, points);
+		ctx.clip();
+		ctx.drawImage(image, minX, minY, width, height);
+	}
+	else {
+		tracePolygon(ctx, points);
+		ctx.fillStyle = fallback;
+		ctx.fill();
+	}
+	ctx.restore();
 }
 
-function drawWallLabel(ctx: CanvasRenderingContext2D, topLeft: Point, width: number, height: number, label: string, palette: CanvasPalette) {
-	ctx.save();
-	ctx.fillStyle = palette.border;
-	ctx.font = `800 ${Math.max(14, Math.round(Math.min(width, height) * 0.46))}px Verdana, Geneva, system-ui, sans-serif`;
-	ctx.textAlign = "center";
-	ctx.textBaseline = "middle";
-	ctx.fillText(label, topLeft.x + width / 2, topLeft.y + height / 2);
-	ctx.restore();
+type ElementFaceImages = {
+	left?: HTMLImageElement;
+	right?: HTMLImageElement;
+	top?: HTMLImageElement;
+};
+
+function drawElementBlock(ctx: CanvasRenderingContext2D, faces: ReturnType<typeof wallCellFaces>, faceImages: ElementFaceImages, fallback: string, selected = false) {
+	drawElementFace(ctx, faces.left, faceImages.left, fallback, 1);
+	drawElementFace(ctx, faces.right, faceImages.right, fallback, 1);
+	drawElementFace(ctx, faces.top, faceImages.top, fallback, 1);
+
+	for (const face of [faces.left, faces.right, faces.top])
+		drawPolygon(ctx, face, "transparent", fallback, selected ? 2.5 : 1.5);
+
+	if (selected) {
+		ctx.strokeStyle = fallback;
+		ctx.lineWidth = 3;
+		tracePolygon(ctx, faces.top);
+		ctx.stroke();
+	}
+}
+
+function interpolateFacePoint(face: Point[], u: number, v: number) {
+	const [topLeft, topRight, bottomRight, bottomLeft] = face;
+	const top = {
+		x: topLeft.x + (topRight.x - topLeft.x) * u,
+		y: topLeft.y + (topRight.y - topLeft.y) * u
+	};
+	const bottom = {
+		x: bottomLeft.x + (bottomRight.x - bottomLeft.x) * u,
+		y: bottomLeft.y + (bottomRight.y - bottomLeft.y) * u
+	};
+
+	return {
+		x: top.x + (bottom.x - top.x) * v,
+		y: top.y + (bottom.y - top.y) * v
+	};
+}
+
+function drawFacePanel(ctx: CanvasRenderingContext2D, face: Point[], u0: number, u1: number, v0: number, v1: number, fill: string, stroke: string, opacity = 1) {
+	drawPolygon(ctx, [
+		interpolateFacePoint(face, u0, v0),
+		interpolateFacePoint(face, u1, v0),
+		interpolateFacePoint(face, u1, v1),
+		interpolateFacePoint(face, u0, v1)
+	], fill, stroke, 1.2, opacity);
+}
+
+function drawOpeningBlock(ctx: CanvasRenderingContext2D, wall: FloorWall, faces: ReturnType<typeof wallCellFaces>, palette: CanvasPalette, selected = false) {
+	const side = wall.direction === "v" ? faces.left : faces.right;
+	const sideFill = wall.direction === "v" ? "#d8c8a5" : "#bfb49a";
+	const panelStroke = "#6e664f";
+	const glassFill = "#9fc6d3";
+
+	drawWallSide(ctx, side, sideFill, "transparent");
+	drawPolygon(ctx, faces.top, "#f2dfb7", "transparent", 0);
+
+	if (wall.opening === "window") {
+		drawFacePanel(ctx, side, 0.18, 0.82, 0.2, 0.58, glassFill, panelStroke, 0.72);
+		drawFacePanel(ctx, side, 0.48, 0.52, 0.2, 0.58, "transparent", panelStroke);
+	}
+	else if (wall.opening === "glass-door") {
+		drawFacePanel(ctx, side, 0.2, 0.8, 0.14, 0.86, glassFill, panelStroke, 0.72);
+		drawFacePanel(ctx, side, 0.32, 0.68, 0.24, 0.76, "transparent", "#f2dfb7", 0.65);
+	}
+	else {
+		drawFacePanel(ctx, side, 0.18, 0.82, 0.12, 0.86, "#ccb98d", panelStroke);
+		drawFacePanel(ctx, side, 0.28, 0.72, 0.22, 0.46, "#d8c8a5", panelStroke, 0.8);
+		drawFacePanel(ctx, side, 0.28, 0.72, 0.54, 0.78, "#d8c8a5", panelStroke, 0.8);
+	}
+
+	if (wall.opening !== "window") {
+		const knob = interpolateFacePoint(side, 0.7, 0.52);
+		ctx.beginPath();
+		ctx.arc(knob.x, knob.y, Math.max(2.2, TILE_H * 0.07), 0, Math.PI * 2);
+		ctx.fillStyle = "#f2dfb7";
+		ctx.fill();
+		ctx.strokeStyle = panelStroke;
+		ctx.lineWidth = 1.1;
+		ctx.stroke();
+	}
+
+	if (selected) {
+		drawPolygon(ctx, side, "transparent", palette.selected, 2.5);
+		drawPolygon(ctx, faces.top, "transparent", palette.selected, 2.5);
+	}
+}
+
+function drawGlassWallBlock(ctx: CanvasRenderingContext2D, wall: FloorWall, wallKeys: Set<string>, faces: ReturnType<typeof wallCellFaces>, palette: CanvasPalette, selected = false) {
+	const hasBelowNeighbor = wallKeys.has(cellKey(wall.col, wall.row + 1));
+	const hasRightNeighbor = wallKeys.has(cellKey(wall.col + 1, wall.row));
+
+	if (!hasBelowNeighbor)
+		drawWallSide(ctx, faces.left, "rgba(135, 190, 202, 0.56)", "transparent");
+	if (!hasRightNeighbor)
+		drawWallSide(ctx, faces.right, "rgba(108, 166, 184, 0.62)", "transparent");
+	drawPolygon(ctx, faces.top, "rgba(182, 221, 225, 0.42)", "transparent", 0);
+
+	if (selected) {
+		for (const face of [!hasBelowNeighbor ? faces.left : null, !hasRightNeighbor ? faces.right : null, faces.top].filter(Boolean) as Point[][])
+			drawPolygon(ctx, face, "transparent", palette.selected, 2.5);
+	}
+}
+
+function drawWallSide(ctx: CanvasRenderingContext2D, face: Point[], fill: string, stroke: string) {
+	drawPolygon(ctx, face, fill, "transparent", 0);
+	drawPolygon(ctx, face, "transparent", stroke, 1.25);
+}
+
+function drawPlainWallCell(ctx: CanvasRenderingContext2D, wall: FloorWall, wallKeys: Set<string>, originX: number, originY: number, zoom: number) {
+	const faces = wallCellFaces(wall.col, wall.row, originX, originY, zoom);
+	const hasBelowNeighbor = wallKeys.has(cellKey(wall.col, wall.row + 1));
+	const hasRightNeighbor = wallKeys.has(cellKey(wall.col + 1, wall.row));
+
+	if (!hasBelowNeighbor)
+		drawWallSide(ctx, faces.left, "#d8c8a5", "transparent");
+	if (!hasRightNeighbor)
+		drawWallSide(ctx, faces.right, "#bfb49a", "transparent");
+	drawPolygon(ctx, faces.top, "#f2dfb7", "transparent", 0);
 }
 
 function floorImageKey(material: FloorMaterial): BuilderImageKey {
@@ -425,6 +574,24 @@ function floorImageKey(material: FloorMaterial): BuilderImageKey {
 	if (material === "carpet")
 		return "floorCarpet";
 	return "floorWood";
+}
+
+function elementImageKey(wall: FloorWall): BuilderImageKey {
+	return wall.direction === "v" ? "wallVertical" : "wallHorizontal";
+}
+
+function elementFaceImages(wall: FloorWall, images: BuilderImages): ElementFaceImages {
+	const image = images[elementImageKey(wall)];
+
+	return { left: image, right: image, top: image };
+}
+
+function shouldUseWallBlockSprite(wall: FloorWall) {
+	return !wall.opening && wall.material !== "glass";
+}
+
+function shouldUseElementSprite(wall: FloorWall) {
+	return Boolean(wall.opening);
 }
 
 const getResizeHandlePositions = (layout: FloorLayout) => ({
@@ -481,6 +648,7 @@ function drawBuilderCanvas({
 	}
 
 	ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+	ctx.imageSmoothingEnabled = false;
 
 	const palette = resolvePalette(canvas);
 	const originX = camera.x;
@@ -503,7 +671,7 @@ function drawBuilderCanvas({
 			ctx.globalAlpha = opacity;
 			drawTexturedPolygon(ctx, points, images[floorImageKey(floorMaterials.get(key) ?? "wood")], palette.secondary);
 			ctx.restore();
-			drawPolygon(ctx, points, "transparent", showGrid || isHover ? palette.border : "transparent", isHover ? 3 : 1.5);
+			drawPolygon(ctx, points, "transparent", showGrid ? palette.border : "transparent", 1.5);
 			continue;
 		}
 
@@ -517,46 +685,50 @@ function drawBuilderCanvas({
 		);
 	}
 
-	for (const wall of sortedWalls) {
-		const topLeft = gridToScreen(wall.col, wall.row, originX, originY, zoom);
-		const points = cellPoints(wall.col, wall.row, originX, originY, zoom);
-		const cellW = TILE_W * zoom;
-		const cellH = TILE_H * zoom;
-		const isHover = hoverCell?.[0] === wall.col && hoverCell[1] === wall.row;
-		const wallStroke = isHover && (tool === "door" || tool === "window") ? palette.selected : palette.border;
-		const wallStrokeWidth = isHover && (tool === "door" || tool === "window") ? 3 : 1.5;
+	const allWallKeys = new Set(sortedWalls.map(wall => cellKey(wall.col, wall.row)));
+	const plainWallKeys = new Set(sortedWalls.filter(shouldUseWallBlockSprite).map(wall => cellKey(wall.col, wall.row)));
 
-		if (DOOR_OPENINGS.has(wall.opening as Opening)) {
-			if (wall.opening === "glass-door")
-				drawGlassWall(ctx, topLeft, cellW, cellH, palette, wallStroke, wallStrokeWidth);
-			else
-				drawPolygon(ctx, points, palette.selected, wallStroke, wallStrokeWidth);
-			drawWallLabel(ctx, topLeft, cellW, cellH, "D", palette);
+	for (const wall of sortedWalls) {
+		const faces = wallCellFaces(wall.col, wall.row, originX, originY, zoom);
+		const isHover = hoverCell?.[0] === wall.col && hoverCell[1] === wall.row;
+		const faceImages = elementFaceImages(wall, images);
+
+		if (plainWallKeys.has(cellKey(wall.col, wall.row))) {
+			drawPlainWallCell(ctx, wall, plainWallKeys, originX, originY, zoom);
 			continue;
 		}
 
-		if (wall.opening) {
-			drawPolygon(ctx, points, palette.shade0, wallStroke, wallStrokeWidth);
-			drawWallLabel(ctx, topLeft, cellW, cellH, "W", palette);
+		if (shouldUseElementSprite(wall)) {
+			drawOpeningBlock(ctx, wall, faces, palette, isHover && (tool === "door" || tool === "window"));
 			continue;
 		}
 
 		if (wall.material === "glass") {
-			drawGlassWall(ctx, topLeft, cellW, cellH, palette, wallStroke, wallStrokeWidth);
+			drawGlassWallBlock(ctx, wall, allWallKeys, faces, palette, isHover && tool === "wall");
 			continue;
 		}
 
-		drawPolygon(ctx, points, palette.shade2, wallStroke, wallStrokeWidth);
+		drawElementBlock(ctx, faces, faceImages, isHover ? palette.selected : palette.border, isHover && (tool === "door" || tool === "window"));
 	}
 
 	const hoveredRoom = hoverCell ? getRoomAtCell(layout, hoverCell) : null;
+	if (hoverCell) {
+		const points = cellPoints(hoverCell[0], hoverCell[1], originX, originY, zoom);
+		drawPolygon(ctx, points, "transparent", palette.selected, 3);
+	}
+
 	if (hoveredRoom) {
-		const topLeft = gridToScreen(hoveredRoom.bounds.minCol, hoveredRoom.bounds.minRow, originX, originY, zoom);
-		const bottomRight = gridToScreen(hoveredRoom.bounds.maxCol + 1, hoveredRoom.bounds.maxRow + 1, originX, originY, zoom);
+		const roomPoints = [
+			gridToScreen(hoveredRoom.bounds.minCol, hoveredRoom.bounds.minRow, originX, originY, zoom),
+			gridToScreen(hoveredRoom.bounds.maxCol + 1, hoveredRoom.bounds.minRow, originX, originY, zoom),
+			gridToScreen(hoveredRoom.bounds.maxCol + 1, hoveredRoom.bounds.maxRow + 1, originX, originY, zoom),
+			gridToScreen(hoveredRoom.bounds.minCol, hoveredRoom.bounds.maxRow + 1, originX, originY, zoom)
+		];
 
 		ctx.strokeStyle = palette.selected;
 		ctx.lineWidth = 3;
-		ctx.strokeRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+		tracePolygon(ctx, roomPoints);
+		ctx.stroke();
 
 		for (const [, [col, row]] of Object.entries(getRoomHandlePositions(hoveredRoom.bounds)) as Array<[ResizeHandle, Cell]>) {
 			const point = gridToScreen(col, row, originX, originY, zoom);
@@ -986,6 +1158,11 @@ export default function BuilderPage() {
 		return null;
 	};
 
+	const getTargetCellFromEvent = (event: PointerEvent<HTMLCanvasElement>) =>
+		tool === "door" || tool === "window"
+			? getWallFromEvent(event) ?? getCellFromEvent(event)
+			: getCellFromEvent(event);
+
 	const hitResizeHandle = (event: PointerEvent<HTMLCanvasElement>) => {
 		const point = getPointFromEvent(event);
 
@@ -994,13 +1171,8 @@ export default function BuilderPage() {
 
 	const getGridLineFromEvent = (event: PointerEvent<HTMLCanvasElement>) => {
 		const point = getPointFromEvent(event);
-		const sx = (point.x - originX) / zoom;
-		const sy = (point.y - originY) / zoom;
 
-		return {
-			col: Math.round(sx / TILE_W),
-			row: Math.round(sy / TILE_H)
-		};
+		return screenToGridLine(point.x, point.y, originX, originY, zoom);
 	};
 
 	const hitSelectedRoomHandle = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -1050,7 +1222,7 @@ export default function BuilderPage() {
 			return;
 
 		const point = getPointFromEvent(event);
-		const cell = screenToGrid(point.x, point.y, drag.camera.x, drag.camera.y, zoom);
+		const cell = screenToGridLine(point.x, point.y, drag.camera.x, drag.camera.y, zoom);
 		const start = drag.layout;
 		let cols = start.cols;
 		let rows = start.rows;
@@ -1160,7 +1332,7 @@ export default function BuilderPage() {
 			return;
 		}
 
-		const cell = getWallFromEvent(event) ?? getCellFromEvent(event);
+		const cell = getTargetCellFromEvent(event);
 		if (!cell) {
 			if (tool === "pan")
 				setPanStart({ x: event.clientX, y: event.clientY, camera });
@@ -1201,7 +1373,7 @@ export default function BuilderPage() {
 	};
 
 	const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
-		const currentCell = getWallFromEvent(event) ?? getCellFromEvent(event);
+		const currentCell = getTargetCellFromEvent(event);
 		setHoverCell(currentCell);
 		setHoverPoint(getPointFromEvent(event));
 
