@@ -1,0 +1,18 @@
+{
+	"name": "@shared/constants",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "Shared constants",
+	"main": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"build": "tsc",
+		"lint": "tsc --noEmit",
+		"lint:fix": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"typescript": "^5.8.3"
+	}
+}

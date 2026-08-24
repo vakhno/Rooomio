@@ -5,7 +5,7 @@ import { Input } from "@shared/design-system/input";
 import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useSignInEmail } from "@shared/queries";
 import { ROUTES } from "@shared/routes/constants";
-import { SignInSchema, type SignInSchemaType } from "@shared/zod-schemas/auth";
+import { type SignInInput, SignInInputSchema } from "@shared/validations";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -15,15 +15,15 @@ export default function SignInForm() {
 	const content = DICTIONARY[DEFAULT_LOCALE].pages.login.form;
 	const [error, setError] = useState<string | null>(null);
 	const signInMutation = useSignInEmail({ apiBaseUrl: import.meta.env.VITE_API_URL });
-	const form = useForm<SignInSchemaType>({
-		resolver: zodResolver(SignInSchema),
+	const form = useForm<SignInInput>({
+		resolver: zodResolver(SignInInputSchema),
 		defaultValues: {
 			email: "",
 			password: ""
 		}
 	});
 
-	const submit = async ({ email, password }: SignInSchemaType) => {
+	const submit = async ({ email, password }: SignInInput) => {
 		setError(null);
 
 		try {

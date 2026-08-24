@@ -1,5 +1,6 @@
 import type { Socket } from "socket.io-client";
 
+import { CONSTANTS } from "@shared/constants";
 import {
 	getPgPool,
 	initAuthTables,
@@ -7,7 +8,7 @@ import {
 	initDb,
 	initFloorPlanTables,
 } from "@shared/pg";
-import { type FloorLayout, FloorLayoutSchema } from "@shared/zod-schemas";
+import { type FloorLayout, FloorLayoutSchema } from "@shared/validations";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readFileSync } from "node:fs";
@@ -135,12 +136,12 @@ const seedDatabase = async () => {
 };
 
 const connectSeedUser = async (apiUrl: string, userId: string) => {
-	const token = jwt.sign({ id: userId, role: "user" }, process.env.JWT_SECRET, { expiresIn: "6h" });
+	const token = jwt.sign({ id: userId, role: "user" }, process.env.JWT_SECRET, { expiresIn: CONSTANTS.auth.token.ttlSeconds });
 	const socket = io(apiUrl, {
 		autoConnect: false,
 		auth: { token },
 		extraHeaders: {
-			Cookie: `token=${encodeURIComponent(token)}`,
+			Cookie: `${CONSTANTS.auth.token.cookieName}=${encodeURIComponent(token)}`,
 		},
 		transports: ["websocket"],
 		withCredentials: true,

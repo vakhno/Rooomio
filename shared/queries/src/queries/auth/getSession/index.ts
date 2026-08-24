@@ -1,4 +1,4 @@
-import type { ClientSession } from "@shared/zod-schemas";
+import type { ClientSession } from "@shared/validations";
 
 import {
 	useQuery,

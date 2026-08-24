@@ -13,7 +13,7 @@
 		"lint:fix": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@shared/zod-schemas": "file:../zod-schemas",
+		"@shared/validations": "file:../validations",
 		"@tanstack/react-query": "^5.81.2"
 	},
 	"devDependencies": {

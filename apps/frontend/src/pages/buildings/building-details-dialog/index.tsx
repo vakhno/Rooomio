@@ -1,4 +1,4 @@
-import type { Building, FloorPlan } from "@shared/zod-schemas";
+import type { Building, FloorPlan } from "@shared/validations";
 
 import { Badge } from "@shared/design-system/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@shared/design-system/dialog";

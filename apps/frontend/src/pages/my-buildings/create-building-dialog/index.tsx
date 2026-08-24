@@ -1,4 +1,4 @@
-import type { Building } from "@shared/zod-schemas";
+import type { Building } from "@shared/validations";
 import type { FormEvent } from "react";
 
 import { Button } from "@shared/design-system/button";

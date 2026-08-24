@@ -1,4 +1,4 @@
-import type { FloorLayout } from "@shared/zod-schemas";
+import type { FloorLayout } from "@shared/validations";
 import type { PointerEvent } from "react";
 
 import { Badge } from "@shared/design-system/badge";

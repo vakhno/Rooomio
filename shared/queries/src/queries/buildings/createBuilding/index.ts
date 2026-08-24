@@ -1,4 +1,4 @@
-import type { Building, CreateBuildingInput } from "@shared/zod-schemas";
+import type { Building, BuildingInput } from "@shared/validations";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -6,7 +6,7 @@ import { buildingQueryKeys } from "..";
 
 type CreateBuildingProps = {
 	apiBaseUrl: string;
-	building: CreateBuildingInput;
+	building: BuildingInput;
 };
 
 export const createBuilding = async ({ apiBaseUrl, building }: CreateBuildingProps) => {
@@ -28,7 +28,7 @@ export const useCreateBuilding = ({ apiBaseUrl }: Pick<CreateBuildingProps, "api
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (building: CreateBuildingInput) => createBuilding({ apiBaseUrl, building }),
+		mutationFn: (building: BuildingInput) => createBuilding({ apiBaseUrl, building }),
 		onSuccess: (building) => {
 			queryClient.setQueryData<Building[]>(buildingQueryKeys.list, current => [building, ...(current ?? [])]);
 			queryClient.setQueryData<Building[]>(buildingQueryKeys.my, current => [building, ...(current ?? [])]);

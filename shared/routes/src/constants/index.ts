@@ -49,8 +49,6 @@ export const AUTH_REQUIRED_PAGES_LIST = [
     ROUTES.RESERVATIONS.path,
 ] as const;
 
-export const ADMIN_REQUIRED_PAGES_LIST = [] as const;
-
 export const QUERIES = {
     ERROR_TOAST: "error_toast",
     ERROR_AUTH_TOAST: "error_auth_toast",

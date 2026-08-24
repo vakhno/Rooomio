@@ -1,4 +1,4 @@
-import type { ClientSession, SignInInput } from "@shared/zod-schemas";
+import type { ClientSession, SignInInput } from "@shared/validations";
 
 import {
 	type QueryClient,

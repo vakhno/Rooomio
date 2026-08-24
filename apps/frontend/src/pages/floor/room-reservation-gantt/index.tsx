@@ -6,7 +6,7 @@ import type {
 	RoomReservationHold,
 	RoomReservationWire
 } from "@shared/sockets/contracts";
-import type { FloorLayout } from "@shared/zod-schemas";
+import type { FloorLayout } from "@shared/validations";
 import type { Socket } from "socket.io-client";
 
 import { Button } from "@shared/design-system/button";

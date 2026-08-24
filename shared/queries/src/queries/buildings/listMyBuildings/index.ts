@@ -1,4 +1,4 @@
-import type { Building } from "@shared/zod-schemas";
+import type { Building } from "@shared/validations";
 
 import { useQuery } from "@tanstack/react-query";
 

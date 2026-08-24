@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { getPgPool } from "@shared/pg";
-import { type Building, CreateBuildingSchema } from "@shared/zod-schemas";
+import { type Building, BuildingInputSchema } from "@shared/validations";
 import { randomUUID } from "node:crypto";
 
 import { requireUser } from "../auth/session.js";
@@ -49,7 +49,7 @@ export const listMyBuildings = async (req: Request, res: Response) => {
 };
 
 export const createBuilding = async (req: Request, res: Response) => {
-	const parsedBody = CreateBuildingSchema.safeParse(req.body);
+	const parsedBody = BuildingInputSchema.safeParse(req.body);
 
 	if (!parsedBody.success) {
 		return res.status(400).json({ error: "Invalid request body", issues: parsedBody.error.issues });

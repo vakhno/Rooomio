@@ -1,12 +1,13 @@
-import type { UserSchemaType } from "@shared/zod-schemas";
+import type { UserSchemaType } from "@shared/validations";
 import type { Request, Response } from "express";
 import type { JwtPayload } from "jsonwebtoken";
 
+import { CONSTANTS } from "@shared/constants";
 import { getPgPool } from "@shared/pg";
 import jwt from "jsonwebtoken";
 
-export const TOKEN_COOKIE_NAME = "token";
-export const TOKEN_TTL_SECONDS = 60 * 60 * 6;
+export const TOKEN_COOKIE_NAME = CONSTANTS.auth.token.cookieName;
+export const TOKEN_TTL_SECONDS = CONSTANTS.auth.token.ttlSeconds;
 
 interface TokenPayload extends JwtPayload {
 	id: string;

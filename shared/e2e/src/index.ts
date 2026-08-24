@@ -1,11 +1,3 @@
-export { test, expect, createAuthFixtures } from "./fixtures";
-export type { AuthCookie, AuthFixtures, AuthFixtureOptions } from "./fixtures";
-
-export {
-	addAuthCookies,
-	clearAuthCookies,
-	navigateTo,
-	expectRedirectTo,
-} from "./helpers";
-
-export { defineBaseConfig } from "./config/base-config";
+export { generateUniqueEmail } from "./utils/generateUniqueEmail";
+export { generateUniqueName } from "./utils/generateUniqueName";
+export { generateUniquePassword } from "./utils/generateUniquePassword";

@@ -1,32 +1,19 @@
-import type { ClientSession, UserSchemaType } from "@shared/zod-schemas";
-import type { CookieOptions, Request, Response } from "express";
+import type { ClientSession, UserSchemaType } from "@shared/validations";
+import type { Request, Response } from "express";
 
+import { CONSTANTS } from "@shared/constants";
 import { getPgPool } from "@shared/pg";
-import { DEFAULT_USER_ROLE, SignInSchema, SignUpSchema } from "@shared/zod-schemas";
+import { DEFAULT_USER_ROLE, SignInInputSchema, SignUpInputSchema } from "@shared/validations";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { randomUUID } from "node:crypto";
 
+import { tokenCookieOptions } from "../../utils/token-cookie-options/index.js";
 import { clearTokenCookie, findUserById, TOKEN_COOKIE_NAME, TOKEN_TTL_SECONDS, verifyToken } from "./session.js";
-
-const PASSWORD_SALT_ROUNDS = 10;
-
-const tokenCookieOptions = (): CookieOptions => {
-	const appUrl = process.env.VITE_APP_URL || "";
-	const secure = appUrl.startsWith("https://");
-
-	return {
-		httpOnly: true,
-		secure,
-		sameSite: secure ? "none" : "lax",
-		path: "/",
-		maxAge: TOKEN_TTL_SECONDS * 1000,
-	};
-};
 
 export const signIn = async (req: Request, res: Response) => {
 	const { body } = req;
-	const parsedBody = SignInSchema.safeParse(body);
+	const parsedBody = SignInInputSchema.safeParse(body);
 	const { success } = parsedBody;
 
 	if (!success) {
@@ -95,7 +82,7 @@ export const signIn = async (req: Request, res: Response) => {
 
 export const signUp = async (req: Request, res: Response) => {
 	const { body } = req;
-	const parsedBody = SignUpSchema.safeParse(body);
+	const parsedBody = SignUpInputSchema.safeParse(body);
 	const { success } = parsedBody;
 
 	if (!success) {
@@ -110,7 +97,7 @@ export const signUp = async (req: Request, res: Response) => {
 		const currentDate = new Date();
 		const generatedUserId = randomUUID();
 		const generatedAccountId = randomUUID();
-		const password = await bcrypt.hash(parsedBody.data.password, PASSWORD_SALT_ROUNDS);
+		const password = await bcrypt.hash(parsedBody.data.password, CONSTANTS.auth.password.bcryptSaltRounds);
 
 		try {
 			const existingUserQuery = await clientPg.query<UserSchemaType>(

@@ -1,4 +1,4 @@
-import type { FloorWall } from "@shared/zod-schemas";
+import type { FloorWall } from "@shared/validations";
 
 export type Tool = "room" | "floor" | "wall" | "door" | "window" | "pan";
 export type BuildTool = Exclude<Tool, "pan">;
