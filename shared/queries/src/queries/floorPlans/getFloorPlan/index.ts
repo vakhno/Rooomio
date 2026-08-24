@@ -1,4 +1,4 @@
-import type { FloorPlan } from "@shared/zod-schemas";
+import type { FloorPlan } from "@shared/validations";
 
 import { useQuery } from "@tanstack/react-query";
 

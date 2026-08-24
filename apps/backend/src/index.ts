@@ -1,37 +1,12 @@
-import { getPgPool, initAuthTables, initBuildingTables, initDb, initFloorPlanTables, initReservationTables } from "@shared/pg";
+import { getPgPool } from "@shared/pg";
 import { initSocketEvents, initSocketServer } from "@shared/sockets";
-import { FloorLayoutSchema } from "@shared/zod-schemas";
-import cookieParser from "cookie-parser";
-import cors from "cors";
-import express from "express";
-import helmet from "helmet";
+import { FloorLayoutSchema } from "@shared/validations";
 
+import { createApp } from "./inits/create-app.js";
 import { createPostgresReservationStore } from "./lib/reservation-store.js";
 import { TOKEN_COOKIE_NAME, verifyToken } from "./routes/auth/session.js";
-import { initRoutes } from "./routes/index.js";
 
-const corsConfig = {
-	origin: [process.env.VITE_APP_URL],
-	credentials: true,
-};
-
-const expressApp = express();
-
-expressApp.set("trust proxy", true);
-
-expressApp.use(cookieParser());
-expressApp.use(cors(corsConfig));
-
-await initDb();
-await initAuthTables();
-await initBuildingTables();
-await initFloorPlanTables();
-await initReservationTables();
-
-expressApp.use(helmet());
-expressApp.use(express.json());
-
-initRoutes(expressApp);
+const expressApp = await createApp();
 
 const { io, server } = initSocketServer(expressApp);
 

@@ -6,7 +6,8 @@
 	"main": "./src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./constants": "./src/constants/index.ts"
+		"./constants": "./src/constants/index.ts",
+		"./locales": "./src/locales/index.ts"
 	},
 	"scripts": {
 		"build": "tsc",

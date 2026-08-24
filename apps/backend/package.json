@@ -19,10 +19,11 @@
 		"dev:tsx": "tsx watch ./src/index.ts"
 	},
 	"dependencies": {
+		"@shared/constants": "file:../../shared/constants",
 		"@shared/pg": "file:../../shared/pg",
 		"@shared/routes": "file:../../shared/routes",
 		"@shared/sockets": "file:../../shared/sockets",
-		"@shared/zod-schemas": "file:../../shared/zod-schemas",
+		"@shared/validations": "file:../../shared/validations",
 		"bcryptjs": "^3.0.3",
 		"cookie-parser": "^1.4.7",
 		"cors": "^2.8.5",

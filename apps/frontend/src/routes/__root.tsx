@@ -1,7 +1,6 @@
 import { getSession, useGetSession } from "@shared/queries";
 import { ROUTES } from "@shared/routes/constants";
-import { isAdminRoleRequiredPage, isAuthRequiredPage, isBlockedDuringAuthPage, pickRootSearchQueries } from "@shared/routes/utils";
-import { ROLES } from "@shared/zod-schemas";
+import { isAuthRequiredPage, isBlockedDuringAuthPage, pickRootSearchQueries } from "@shared/routes/utils";
 import { createRootRoute, HeadContent, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 
@@ -12,7 +11,6 @@ export const Route = createRootRoute({
 		const { pathname } = location;
 		const isAuthRequired = isAuthRequiredPage(pathname);
 		const isBlockedDuringAuth = isBlockedDuringAuthPage(pathname);
-		const isAdminRoleRequired = isAdminRoleRequiredPage(pathname);
 		const apiBaseUrl = import.meta.env.VITE_API_URL;
 
 		if (isBlockedDuringAuth) {
@@ -30,24 +28,6 @@ export const Route = createRootRoute({
 
 			if (!session?.user) {
 				return redirect({ to: ROUTES.LOGIN.path, replace: true });
-			}
-
-			return;
-		}
-
-		if (isAdminRoleRequired) {
-			const session = await getSession({ apiBaseUrl });
-
-			if (session?.user) {
-				const user = session.user;
-
-				if (user) {
-					const { role } = user;
-
-					if (role !== ROLES.ADMIN) {
-						return redirect({ to: ROUTES.HOME.path, replace: true });
-					}
-				}
 			}
 		}
 	},

@@ -1,0 +1,23 @@
+{
+	"name": "@shared/validations",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "Shared Zod validation schemas",
+	"main": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"build": "tsc",
+		"lint": "tsc --noEmit",
+		"lint:fix": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@shared/constants": "file:../constants",
+		"@shared/locales": "file:../locales",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"typescript": "~5.8.3"
+	}
+}

@@ -1,4 +1,4 @@
-import type { FloorLayout } from "@shared/zod-schemas";
+import type { FloorLayout } from "@shared/validations";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@shared/design-system/dialog";
 import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";

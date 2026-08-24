@@ -5,7 +5,7 @@ import { Input } from "@shared/design-system/input";
 import { DEFAULT_LOCALE, DICTIONARY } from "@shared/locales";
 import { useSignUpEmail } from "@shared/queries";
 import { ROUTES } from "@shared/routes/constants";
-import { SignUpSchema, type SignUpSchemaType } from "@shared/zod-schemas/auth";
+import { type SignUpInput, SignUpInputSchema } from "@shared/validations";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -15,8 +15,8 @@ export default function SignUpForm() {
 	const content = DICTIONARY[DEFAULT_LOCALE].pages.login.form;
 	const [error, setError] = useState<string | null>(null);
 	const signUpMutation = useSignUpEmail({ apiBaseUrl: import.meta.env.VITE_API_URL });
-	const form = useForm<SignUpSchemaType>({
-		resolver: zodResolver(SignUpSchema),
+	const form = useForm<SignUpInput>({
+		resolver: zodResolver(SignUpInputSchema),
 		defaultValues: {
 			name: "",
 			email: "",
@@ -24,7 +24,7 @@ export default function SignUpForm() {
 		}
 	});
 
-	const submit = async ({ email, name, password }: SignUpSchemaType) => {
+	const submit = async ({ email, name, password }: SignUpInput) => {
 		setError(null);
 
 		try {

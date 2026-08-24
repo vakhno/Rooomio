@@ -10,7 +10,8 @@
 		"rootDir": ".",
 		"outDir": "./dist",
 		"forceConsistentCasingInFileNames": true,
-		"esModuleInterop": true
+		"esModuleInterop": true,
+		"types": ["node"]
 	},
 	"include": ["src/**/*.ts", "playwright.config.ts"],
 	"exclude": ["node_modules", "dist", "playwright-report", "test-results"]

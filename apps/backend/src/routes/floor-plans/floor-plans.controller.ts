@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { getPgPool } from "@shared/pg";
-import { type FloorPlan, SaveFloorPlanSchema } from "@shared/zod-schemas";
+import { type FloorPlan, SaveFloorPlanSchema } from "@shared/validations";
 import { randomUUID } from "node:crypto";
 
 import { requireUser } from "../auth/session.js";
